@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>livedraw</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=VT323&display=swap");
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+        font-family: "VT323", monospace;
+        font-size: 24px;
+        color: var(--color-main);
+      }
+      code {
+        font-family: "VT323", monospace;
+      }
+      #main {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+      }
+      #background {
+        -webkit-mask-image: url("mask.svg");
+        -webkit-mask-size: 100%;
+        -webkit-mask-clip: border-box;
+        background-image: var(--bg);
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+      }
+      #instructions {
+        filter: drop-shadow(0px 1px 4px var(--color-main));
+      }
+      #chatbox {
+        position: absolute;
+        width: 38%;
+        top: 5%;
+        right: 5%;
+        height: 40%;
+        padding: 8px;
+        background: #00000033;
+        font-size: 1em;
+        overflow-y: hidden;
+      }
+      .chat ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .chat li {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 2px 0;
+        filter: drop-shadow(0px 0px 4px var(--color-main));
+      }
+      .chat li[data-fade-out] {
+        content: "";
+        opacity: 0.5;
+        transition: all 5s ease-in-out;
+      }
+      #components {
+        position: absolute;
+        width: 55%;
+        bottom: 0;
+        right: 2%;
+        height: 50%;
+        padding: 0px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+      }
+      #components > * {
+        flex: 1;
+        justify-content: space-evenly !important;
+      }
+      path {
+        stroke: var(--color-main);
+        transition: 500ms;
+      }
+      text {
+        fill: var(--color-main);
+      }
+      #plot-camera {
+        position: absolute;
+        top: 50px;
+        left: 50px;
+        width: 705px;
+        height: 940px;
+      }
+      #footer {
+        position: absolute;
+        bottom: 20px;
+        left: 60px;
+        width: 705px;
+        color: var(--color-main);
+        font-size: 1em;
+        text-transform: uppercase;
+        text-align: center;
+        filter: drop-shadow(0px 0px 2px var(--color-main));
+      }
+      #pen-camera {
+        position: absolute;
+        top: 50px;
+        left: 820px;
+        width: 200px;
+        height: 200px;
+      }
+      #streamer-camera {
+        position: absolute;
+        top: 280px;
+        left: 820px;
+        width: 200px;
+        height: 200px;
+        border-color: var(--color-live);
+      }
+      .camera {
+        border: 4px solid var(--color-main);
+        background-image: var(--camera-highlight);
+      }
+      .camera.disabled {
+        border-color: var(--color-disabled);
+        background-image: var(--camera-highlight-disabled);
+        transition: 1s filter;
+      }
+      .camera.countdownpause {
+        filter: hue-rotate(160deg);
+      }
+      .camera {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+      }
+
+      .camera .live {
+        position: absolute;
+        top: 1px;
+        left: 4px;
+        color: var(--color-live);
+        text-transform: uppercase;
+        font-size: 0.6em;
+      }
+      .blink {
+        animation: blink 1s linear infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 1;
+        }
+        60%,
+        90% {
+          opacity: 0;
+        }
+      }
+      .camera .countdown-pause-text {
+      }
+      .camera .countdown {
+        margin: 10px;
+        font-size: 1.4em;
+      }
+      #predictive {
+        position: absolute;
+        width: 96%;
+        height: 96%;
+        top: 2%;
+        left: 2%;
+      }
+      #predictive .camera:not(.disabled) {
+        animation: predictive infinite 2s;
+      }
+      #predictive.darkblue {
+        opacity: 0.5;
+        filter: invert(41%) sepia(69%) saturate(737%) hue-rotate(156deg)
+          brightness(92%) contrast(93%);
+      }
+      #predictive.light {
+        opacity: 0.5;
+        filter: invert(76%) sepia(23%) saturate(658%) hue-rotate(185deg)
+          brightness(100%) contrast(102%);
+      }
+      @keyframes predictive {
+        0%,
+        100% {
+          opacity: 0.5;
+        }
+        50% {
+          opacity: 0.2;
+        }
+      }
+      @keyframes loading {
+        0%,
+        100% {
+          opacity: 0.4;
+        }
+        50% {
+          opacity: 0.1;
+        }
+      }
+
+      .mode-frozen #components {
+        filter: brightness(200%) opacity(0.5);
+      }
+
+      .mode-berserk #components {
+        animation: huerotate100 0.5s linear infinite;
+      }
+      @keyframes huerotate100 {
+        0%,
+        100% {
+          filter: hue-rotate(0deg);
+        }
+        50% {
+          filter: hue-rotate(100deg);
+        }
+      }
+
+      .layout-input {
+        margin: 8px 16px;
+      }
+
+      .layout-input-component-Poll {
+        flex: 1;
+      }
+
+      .layout-input {
+        transition: 0s;
+        opacity: 1;
+        filter: drop-shadow(0px 0px 2px var(--color-main));
+      }
+      .layout-input.layout-input-noupdates {
+        transition: 1s;
+        opacity: 0.8;
+        filter: drop-shadow(0px 0px 6px var(--color-main));
+      }
+
+      .component-poll {
+        color: var(--color-main);
+      }
+      .component-poll .question {
+        font-weight: 400;
+        text-transform: uppercase;
+        font-size: 1em;
+        margin-bottom: 0.4em;
+        display: block;
+      }
+      .component-poll .choices {
+      }
+      .component-poll .choice {
+        padding: 8px;
+        border: var(--color-main) 1px solid;
+        position: relative;
+      }
+      .component-poll .choices .choice:not(:last-child) {
+        border-bottom: 0px;
+      }
+
+      .component-poll .choice .text {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+      }
+      .component-poll .choice .percent {
+        position: absolute;
+        height: 100%;
+        left: 0;
+        top: 0;
+        opacity: 0.3;
+        background-color: var(--color-main);
+      }
+      .component-poll .choice .label {
+        text-transform: uppercase;
+      }
+
+      .component-range-vslider {
+        text-align: center;
+      }
+      .component-range-vslider .label {
+        text-transform: uppercase;
+        font-size: 1em;
+        padding-bottom: 4px;
+        display: block;
+      }
+      .component-range-vslider .slider {
+        height: 148px;
+        width: 64px;
+        position: relative;
+        border: 1px solid var(--color-main);
+      }
+      .component-range-vslider .percent {
+        position: absolute;
+        width: 100%;
+        bottom: 0;
+        opacity: 0.3;
+        background-color: var(--color-main);
+      }
+      .component-range-vslider.loading .percent {
+        animation: infinite 2s loading;
+      }
+      .component-range-vslider .target {
+        position: absolute;
+        width: 120%;
+        left: -10%;
+        border: 1px dashed var(--color-main);
+      }
+      .component-range-vslider .current {
+        position: absolute;
+        width: 120%;
+        left: -10%;
+        border: 1px solid var(--color-main);
+      }
+
+      #plot-progress {
+        position: absolute;
+        left: 50px;
+        bottom: 50px;
+        width: 705px;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 20px;
+        border: 2px solid var(--color-main);
+        overflow: hidden;
+      }
+
+      .progress-bar .progress {
+        height: 100%;
+        background-color: var(--color-main);
+        transition: width 0.3s;
+      }
+
+      .progress-bar .progress.dashed {
+        background-image: repeating-linear-gradient(
+          to right,
+          transparent,
+          transparent 3px,
+          #000 3px,
+          #000 6px
+        );
+        background-size: 12px 6px;
+      }
+
+      .camtimer {
+        color: var(--color-live);
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        font-size: 0.8em;
+      }
+
+      #instructions {
+        position: absolute;
+        top: 47%;
+        right: 2%;
+        width: 55%;
+        height: 30px;
+        overflow: hidden;
+        font-size: 1em;
+        -webkit-mask-image: linear-gradient(
+          to left,
+          rgba(0, 0, 0, 0),
+          rgba(0, 0, 0, 0.6),
+          rgba(0, 0, 0, 0)
+        );
+      }
+
+      .progressing {
+        position: absolute;
+        width: 100%;
+        border-bottom: 1px dashed var(--color-main);
+        opacity: 0.8;
+        animation: move 1s linear infinite;
+      }
+
+      @keyframes move {
+        from {
+          transform: translateY(0);
+        }
+        to {
+          transform: translateY(-100%);
+        }
+      }
+
+      .progressing.down {
+        animation-direction: reverse;
+      }
+
+      #instructions .content {
+        display: inline-block;
+        white-space: pre;
+        animation: scroll 30s cubic-bezier(0, 0.2, 1, 0.8) infinite;
+      }
+
+      @keyframes scroll {
+        from {
+          transform: translateX(80%);
+        }
+        to {
+          transform: translateX(-100%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="main"></div>
+    <script src="https://unpkg.com/react/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone/babel.min.js"></script>
+    <script type="text/babel">
+      const { useState, useEffect, useMemo, useRef } = React;
+
+      function CurveImpl({ value, width, height, config }) {
+        const pad = 10;
+        const stepx = width / value.length;
+        const yamp = height - 2 * pad;
+        const d = value
+          .map(
+            (v, i) =>
+              (i === 0 ? "M" : "L") +
+              ((i + 0.5) * stepx).toFixed(2) +
+              "," +
+              (yamp * (1 - v) + pad).toFixed(2)
+          )
+          .join(" ");
+        return (
+          <g>
+            <path
+              d={d}
+              fill="none"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d={`M0,${height / 2} L${width},${height / 2}`}
+              fill="none"
+              strokeWidth={0.5}
+              strokeDasharray="0 4 0"
+            />
+
+            {config.letters.split("").map((v, i) => {
+              const x = (((i + 0.5) * width) / config.letters.length).toFixed(
+                1
+              );
+              return (
+                <path
+                  key={i}
+                  d={`M${x},${0} L${x},${height}`}
+                  fill="none"
+                  strokeWidth={0.3}
+                />
+              );
+            })}
+          </g>
+        );
+      }
+
+      const Curve = React.memo(CurveImpl);
+
+      const Alphabet = React.memo(function AlphabetImpl({
+        width,
+        value,
+        config,
+      }) {
+        return (
+          <g>
+            {config.letters.split("").map((l, i) => (
+              <text
+                key={i}
+                fontFamily="monospace"
+                fontSize="14px"
+                dominantBaseline="middle"
+                textAnchor="middle"
+                x={((i + 0.5) * width) / config.letters.length}
+                y={5}
+                opacity={0.4 + 0.8 * value[i]}
+              >
+                {l}
+              </text>
+            ))}
+          </g>
+        );
+      });
+
+      function KeyboardCurve({ value, config }) {
+        const width = 400;
+        const height = 100;
+        const curveheight = 80;
+        return (
+          <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+            <Curve
+              value={value}
+              width={width}
+              height={curveheight}
+              config={config}
+            />
+            <g transform="translate(0,80)">
+              <Alphabet width={width} value={value} config={config} />
+            </g>
+          </svg>
+        );
+      }
+
+      function Poll({ id, value, config }) {
+        let sum = 0;
+        value.scores.forEach(([k, v]) => {
+          sum += v;
+        });
+        return (
+          <div className="component-poll">
+            <strong className="question">{config.question}</strong>
+            <div className="choices">
+              {Object.entries(config.choices).map(([key, label]) => (
+                <div className="choice" key={key}>
+                  <span className="text">
+                    <code>
+                      !{id} {key}
+                    </code>
+                    <span className="label">{label}</span>
+                  </span>
+                  {sum > 0 ? (
+                    <div
+                      className="percent"
+                      style={{
+                        width:
+                          (
+                            (100 *
+                              (value.scores.find(([k]) => k === key) || [
+                                key,
+                                0,
+                              ])[1]) /
+                            sum
+                          ).toFixed(1) + "%",
+                      }}
+                    />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      function Range({ id, value, config }) {
+        const { min, max } = config;
+        return (
+          <div
+            className={
+              "component-range-vslider" +
+              (value.value === value.target ? "" : " loading")
+            }
+          >
+            <span className="label">{id}</span>
+            <div className="slider">
+              <div
+                className="percent"
+                style={{
+                  height:
+                    ((100 * (value.value - min)) / (max - min)).toFixed(1) +
+                    "%",
+                }}
+              />
+              <div
+                className="current"
+                style={{
+                  bottom:
+                    ((100 * (value.value - min)) / (max - min)).toFixed(1) +
+                    "%",
+                }}
+              />
+              {value.value === value.target ? null : (
+                <div
+                  className={
+                    "progressing " +
+                    (value.value < value.target ? "up" : "down")
+                  }
+                  style={{
+                    bottom:
+                      (
+                        (100 * (Math.min(value.target, value.value) - min)) /
+                        (max - min)
+                      ).toFixed(1) + "%",
+                    height:
+                      (
+                        (100 * Math.abs(value.value - value.target)) /
+                        (max - min)
+                      ).toFixed(1) + "%",
+                  }}
+                >
+                  <div className="line" />
+                </div>
+              )}
+              {value.value === value.target ? null : (
+                <div
+                  className="target"
+                  style={{
+                    bottom:
+                      ((100 * (value.target - min)) / (max - min)).toFixed(1) +
+                      "%",
+                  }}
+                />
+              )}
+            </div>
+
+            <span className="value">
+              {config.format === "percentage"
+                ? (value.value * 100).toFixed(config.magnitude || 0) + "%"
+                : value.value.toFixed(config.magnitude || 1)}
+            </span>
+          </div>
+        );
+      }
+
+      const components = {
+        KeyboardCurve: React.memo(KeyboardCurve),
+        Poll: React.memo(Poll),
+        Range: React.memo(Range),
+      };
+
+      const LayoutCellInner = ({ value, config, id }) => {
+        const [noupdates, setNoupdates] = useState(true);
+
+        useEffect(() => {
+          setNoupdates(false);
+          const t = setTimeout(() => setNoupdates(true), 2000);
+          return () => clearTimeout(t);
+        }, [value]);
+
+        if (!config) return null;
+        const C = components[config.type];
+        if (!C) return null;
+
+        return (
+          <div
+            className={
+              "layout-input layout-input-component-" +
+              config.type +
+              (noupdates ? " layout-input-noupdates" : "")
+            }
+            key={id}
+          >
+            <C value={value} config={config} id={id} />
+          </div>
+        );
+      };
+
+      const LayoutCell = React.memo(LayoutCellInner);
+
+      const Layout = ({ direction, config, state, layout }) => {
+        return (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: direction,
+              justifyContent: "space-between",
+            }}
+          >
+            {layout.map((id) => {
+              if (typeof id === "object" && Array.isArray(id)) {
+                return (
+                  <Layout
+                    direction={direction === "column" ? "row" : "column"}
+                    key={id}
+                    config={config}
+                    state={state}
+                    layout={id}
+                  />
+                );
+              }
+              const input = config.inputs[id];
+              return (
+                <LayoutCell key={id} value={state[id]} config={input} id={id} />
+              );
+            })}
+          </div>
+        );
+      };
+
+      function sample(array) {
+        if (!array) return "";
+        return array[Math.floor(array.length * Math.random())];
+      }
+      function mix(a, b, x) {
+        return a * (1 - x) + b * x;
+      }
+
+      function commandValueExample(conf, k) {
+        switch (conf.type) {
+          case "KeyboardCurve":
+            return "any letter will shape the curve " + k;
+          case "Poll":
+            return "!" + k + " " + sample(Object.keys(conf.choices));
+          case "Range":
+            return (
+              "!" +
+              k +
+              " " +
+              (Math.random() < 0.3
+                ? sample(["min", "mid", "max"])
+                : Math.random() < 0.3
+                ? (100 * Math.random()).toFixed(0) + "%"
+                : mix(conf.min, conf.max, Math.random()).toFixed(
+                    conf.magnitude || 1
+                  ))
+            );
+          default:
+            return "";
+        }
+      }
+
+      const Styles = ({ config }) => {
+        return (
+          <style>{`:root {
+        --color-main: ${(config.style && config.style.colorMain) || "#0ab1f0"};
+        --color-live: #f00a0a;
+        --bg: radial-gradient(circle, #092643, #0c151c);
+        --camera-highlight: radial-gradient(circle, #68c0ff08, #5db9ff7e);
+        /* too much repetition here... */
+        --color-disabled: #43778a;
+        --camera-highlight-disabled: radial-gradient(
+          circle,
+          #4f728c98,
+          #52738dd9
+        );
+      }`}</style>
+        );
+      };
+
+      const Render = ({ state }) => {
+        const config = state.config;
+        const { plotting, prediction, index, total, countdownPause } =
+          state.artServer;
+        const percent = index / total;
+
+        const layout = useMemo(() => {
+          return config.layout || Object.keys(config.inputs);
+        }, [config.layout]);
+
+        return (
+          <div className={"mode-" + state.rootState.mode}>
+            <Styles config={config} />
+            <div id="background"></div>
+            <div
+              id="plot-camera"
+              className={
+                "camera" +
+                (state.artServer.started ? "" : " disabled") +
+                (countdownPause ? " countdownpause" : "")
+              }
+            >
+              {countdownPause
+                ? [
+                    <span key="title" className="countdown-pause-text">
+                      {countdownPause.text}
+                    </span>,
+                    <Countdown key="timer" {...countdownPause} />,
+                  ]
+                : null}
+
+              <img
+                className={config.predictive}
+                src={`/predictive.svg?t=${prediction}`}
+                id="predictive"
+              />
+              {state.artServer.started ? (
+                <CamTimer relativeSince={state.artServer.startedTime} />
+              ) : null}
+            </div>
+            <div key="footer" id="footer">
+              <span>{state.config.title}</span>
+            </div>
+            <div id="plot-progress">
+              <div className="progress-bar">
+                <div
+                  id="plot-progress-inner"
+                  className="progress dashed"
+                  style={{ width: (percent * 100).toFixed(1) + "%" }}
+                ></div>
+              </div>
+            </div>
+            <div id="streamer-camera" className="camera">
+              <span className="live">
+                <span className="blink">⏺</span>
+                {" twitch.tv/greweb"}
+              </span>
+              <CamTimer absolute />
+            </div>
+            <div
+              id="pen-camera"
+              className={
+                "camera " + (state.artServer.plotting ? "" : "disabled")
+              }
+            >
+              {state.artServer.plotting ? (
+                <CamTimer relativeSince={state.artServer.plottingTime} />
+              ) : null}
+            </div>
+            <div id="chatbox">
+              <ChatBox />
+            </div>
+            <div id="instructions">
+              <div className="content">
+                {Object.keys(config.inputs)
+                  .map((k) =>
+                    (commandValueExample(config.inputs[k], k) + "   ").padEnd(
+                      20,
+                      " "
+                    )
+                  )
+                  .join("")}
+              </div>
+            </div>
+            <div id="components">
+              <Layout
+                direction="column"
+                config={config}
+                state={state}
+                layout={layout}
+              />
+            </div>
+          </div>
+        );
+      };
+
+      const Root = () => {
+        const [state, setState] = useState(null);
+
+        useEffect(() => {
+          function reconnectLoop() {
+            const eventSource = new EventSource("/stream/state");
+            eventSource.onmessage = (e) => {
+              console.log("RELOAD");
+              location.href = "/";
+              eventSource.close();
+            };
+            eventSource.onerror = (e) => {
+              eventSource.close();
+              setTimeout(reconnectLoop, 1000);
+            };
+          }
+
+          const source = new EventSource("/stream/state");
+          source.onmessage = (e) => {
+            console.log(e.data);
+            setState((prev) => ({ ...prev, ...JSON.parse(e.data) }));
+          };
+          source.onerror = (e) => {
+            console.log("DISCONNECT");
+            setTimeout(reconnectLoop, 1000);
+            source.close();
+          };
+        }, []);
+
+        if (!state) return null;
+
+        return <Render state={state} />;
+      };
+
+      const CamTimer = ({ relativeSince }) => {
+        const timerRef = useRef();
+
+        useEffect(() => {
+          if (relativeSince) {
+            const updateTime = () => {
+              if (!timerRef.current) return;
+              const elapsedTime = (Date.now() - relativeSince) / 1000;
+              const minutes = Math.floor(elapsedTime / 60);
+              const seconds = elapsedTime % 60;
+              timerRef.current.textContent = `${
+                (minutes < 10 ? "0" : "") + minutes
+              }:${(seconds < 10 ? "0" : "") + seconds.toFixed(2)}`;
+              requestAnimationFrame(updateTime);
+            };
+            updateTime();
+          } else {
+            const updateTime = () => {
+              if (!timerRef.current) return;
+              const absoluteTime = new Date();
+              const year = absoluteTime.getFullYear();
+              const month = absoluteTime.getMonth() + 1;
+              const day = absoluteTime.getDate();
+              const hours = absoluteTime.getHours();
+              const minutes = absoluteTime.getMinutes();
+              const seconds = absoluteTime.getSeconds();
+              timerRef.current.textContent = `${year}-${month}-${day} ${
+                (hours < 10 ? "0" : "") + hours
+              }:${(minutes < 10 ? "0" : "") + minutes}:${
+                (seconds < 10 ? "0" : "") + seconds
+              }`;
+            };
+            const timerId = setInterval(updateTime, 1000);
+            updateTime();
+            return () => {
+              if (timerId) {
+                clearInterval(timerId);
+              }
+            };
+          }
+        }, [relativeSince]);
+
+        return <div className="camtimer" ref={timerRef} />;
+      };
+
+      const Countdown = ({ duration, startedTime }) => {
+        const timerRef = useRef();
+
+        useEffect(() => {
+          const updateTime = () => {
+            if (!timerRef.current) return;
+            const time = duration - (Date.now() - startedTime) / 1000;
+            const minutes = Math.floor(time / 60);
+            const seconds = time % 60;
+            timerRef.current.textContent =
+              time <= 0
+                ? ""
+                : `${(minutes < 10 ? "0" : "") + minutes}:${
+                    (seconds < 10 ? "0" : "") + seconds.toFixed(2)
+                  }`;
+            requestAnimationFrame(updateTime);
+          };
+          updateTime();
+        }, [duration, startedTime]);
+
+        return <div className="countdown" ref={timerRef} />;
+      };
+
+      function ChatBox() {
+        const [messages, setMessages] = useState([]);
+        const messagesEndRef = useRef(null);
+
+        useEffect(() => {
+          function connect() {
+            const eventSource = new EventSource("/chatbox/messages");
+            eventSource.onmessage = (e) => {
+              const message = JSON.parse(e.data);
+              setMessages((prevMessages) =>
+                prevMessages.length >= 50
+                  ? prevMessages.slice(1).concat(message)
+                  : prevMessages.concat(message)
+              );
+            };
+            eventSource.onerror = (e) => {
+              eventSource.close();
+            };
+            return () => eventSource.close();
+          }
+          return connect();
+        }, []);
+
+        useEffect(() => {
+          messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }, [messages]);
+
+        useEffect(() => {
+          // Add the data-fade-out attribute to the messages after 5 seconds
+          const timeoutIds = messages.map((_, index) =>
+            setTimeout(() => {
+              const messageElement = document.querySelector(
+                `li:nth-child(${index + 1})`
+              );
+              if (messageElement) {
+                messageElement.setAttribute("data-fade-out", "true");
+              }
+            }, 5000)
+          );
+
+          return () => {
+            // Clear the timeout IDs when the component unmounts
+            timeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
+          };
+        }, [messages]);
+
+        return (
+          <div className="chat">
+            <ul>
+              {messages.map((message, index) => (
+                <li key={index}>
+                  <b>{message.user}:</b> {message.text}
+                </li>
+              ))}
+              <div ref={messagesEndRef} />
+            </ul>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("main")).render(<Root />);
+    </script>
+  </body>
+</html>

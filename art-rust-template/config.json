@@ -1,0 +1,42 @@
+{
+  "title": "NAME by @AUTHOR",
+  "layout": [
+    ["shape"],
+    ["value", "poll"]
+  ],
+  "style": {},
+  "predictive": "light",
+  "inputs": {
+    "shape": {
+      "description": "shapes a curve with 26 letters",
+      "letters": "aqwzsxedcrfvtgbyhnujikolpm",
+      "type": "KeyboardCurve",
+      "label": "curve",
+      "envelope": {
+        "attack": 3,
+        "decay": 8,
+        "sustain": 0.5,
+        "release": 30
+      }
+    },
+    "poll": {
+      "type": "Poll",
+      "description": "a poll.",
+      "question": "animal?",
+      "choices": {
+        "dog": "Dog",
+        "cat": "Cat"
+      }
+    },
+    "value": {
+      "description": "a value",
+      "type": "Range",
+      "display": "vslider",
+      "decay": 0.05,
+      "min": 0,
+      "max": 1,
+      "initialValue": 0.5,
+      "magnitude": 3
+    }
+  }
+}
