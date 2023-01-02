@@ -1,4 +1,4 @@
-**Project Under Development**
+Note: The project is not yet very well documented as it's still under development. It is used by @greweb on twitch.tv/greweb and you can also find all the accumulated work made with it by @greweb at https://greweb.me/plots/tags/livedraw – the source code of each art piece is linked on that website too.
 
 ## livedraw
 
