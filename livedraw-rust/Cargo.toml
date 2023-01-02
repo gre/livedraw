@@ -6,6 +6,7 @@ authors = ["@greweb"]
 keywords = ["generative", "creativecoding"]
 license = "MIT"
 edition = "2021"
+repository = "https://github.com/gre/livedraw"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
