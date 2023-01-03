@@ -325,6 +325,31 @@
         border: 1px solid var(--color-main);
       }
 
+      .component-xy {
+        text-align: center;
+      }
+      .component-xy .label {
+        text-transform: uppercase;
+        font-size: 1em;
+        padding-bottom: 4px;
+        display: block;
+      }
+      .component-xy .content {
+        position: relative;
+        height: 148px;
+        width: 148px;
+        border: 1px dashed var(--color-main);
+      }
+      .component-xy .current {
+        position: absolute;
+        background-color: var(--color-main);
+      }
+      .component-xy .target {
+        position: absolute;
+        background-color: var(--color-main);
+        opacity: 0.3;
+      }
+
       #plot-progress {
         position: absolute;
         left: 50px;
@@ -627,10 +652,60 @@
         );
       }
 
+      function XY({ id, value, config }) {
+        const eq =
+          value.value[0] === value.target[0] &&
+          value.value[1] === value.target[1];
+        return (
+          <div className={"component-xy" + (eq ? "" : " loading")}>
+            <span className="label">{id}</span>
+            <div className="content">
+              <div
+                className="current"
+                style={{
+                  height: "100%",
+                  width: "2px",
+                  left: (50 + 50 * value.value[0]).toFixed(1) + "%",
+                }}
+              />
+              <div
+                className="current"
+                style={{
+                  width: "100%",
+                  height: "2px",
+                  top: (50 + 50 * value.value[1]).toFixed(1) + "%",
+                }}
+              />
+              {eq ? null : (
+                <div>
+                  <div
+                    className="target"
+                    style={{
+                      height: "100%",
+                      width: "2px",
+                      left: (50 + 50 * value.target[0]).toFixed(1) + "%",
+                    }}
+                  />
+                  <div
+                    className="target"
+                    style={{
+                      width: "100%",
+                      height: "2px",
+                      top: (50 + 50 * value.target[1]).toFixed(1) + "%",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
       const components = {
         KeyboardCurve: React.memo(KeyboardCurve),
         Poll: React.memo(Poll),
         Range: React.memo(Range),
+        XY: React.memo(XY),
       };
 
       const LayoutCellInner = ({ value, config, id }) => {

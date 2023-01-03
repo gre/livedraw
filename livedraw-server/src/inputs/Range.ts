@@ -68,9 +68,11 @@ const Range: Module<
         remain === "initial"
       ) {
         remain = String(config.initialValue);
+      } else if (remain === "rand") {
+        remain = String(mix(config.min, config.max, Math.random()));
       }
       const isPercent = remain.includes("%");
-      const m = remain.match(/([0-9.]+)/s);
+      const m = remain.match(/([\-0-9.]+)/s);
       if (m) {
         const [, v] = m;
         if (!v) return s;
@@ -78,9 +80,8 @@ const Range: Module<
         if (isFinite(n)) {
           if (isPercent) {
             n = mix(config.min, config.max, n / 100);
-          } else {
-            n = Math.max(config.min, Math.min(n, config.max));
           }
+          n = Math.max(config.min, Math.min(n, config.max));
           if (context.isAdmin && msg.includes("force")) {
             return { target: n, value: n };
           }

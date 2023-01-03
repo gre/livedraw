@@ -16,12 +16,14 @@ import {
 } from "./types";
 import KeyboardCurve from "./inputs/KeyboardCurve";
 import Poll from "./inputs/Poll";
+import XY from "./inputs/XY";
 import Range from "./inputs/Range";
 
 const modules: { [_: string]: Module<any, any, any> } = {
   KeyboardCurve,
   Poll,
   Range,
+  XY,
 };
 
 export default function (
@@ -90,6 +92,7 @@ export default function (
 
   fs.watch(configpath, (e, filename) => {
     if (filename) {
+      const prevConfig = config;
       try {
         state = { ...state };
         config = JSON5.parse(fs.readFileSync(configpath, "utf8"));
@@ -102,10 +105,17 @@ export default function (
               mods[id] = modules[input.type];
               state[id] = mods[id].initialComponentState(globalContext(id));
             }
+          } else {
+            state[id] = mods[id].update(
+              state[id],
+              { dt: 0 },
+              globalContext(id)
+            );
           }
         }
         state.config = config;
       } catch (e) {
+        config = prevConfig;
         console.error("Couldn't update the config", e);
       }
     }
