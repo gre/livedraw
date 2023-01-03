@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Express } from "express";
+import JSON5 from "json5";
 import {
   ArtServer,
   ArtServerAction,
@@ -28,8 +29,11 @@ export default function (
   { chatClient }: StreamPlatformClient,
   artfolder: string
 ) {
-  const configpath = path.join(artfolder, "config.json");
-  let config: Config = JSON.parse(fs.readFileSync(configpath, "utf8"));
+  let configpath = path.join(artfolder, "config.json5");
+  if (!fs.existsSync(configpath)) {
+    configpath = path.join(artfolder, "config.json");
+  }
+  let config: Config = JSON5.parse(fs.readFileSync(configpath, "utf8"));
 
   const updateFrequency = 200;
 
@@ -88,7 +92,7 @@ export default function (
     if (filename) {
       try {
         state = { ...state };
-        config = JSON.parse(fs.readFileSync(configpath, "utf8"));
+        config = JSON5.parse(fs.readFileSync(configpath, "utf8"));
         for (const id in config.inputs) {
           const input = config.inputs[id];
           if (!mods[id]) {
@@ -460,19 +464,16 @@ function manageGiveway(chatClient: StreamChatClient, getConfig: () => Config) {
           chatClient.say("Giveaway is already started.");
           return;
         }
-        const msg = getConfig().giveawayMessage || "type !giveaway to participate"
-        chatClient.say(
-          "Giveaway is starting... "+msg
-        );
+        const msg =
+          getConfig().giveawayMessage || "type !giveaway to participate";
+        chatClient.say("Giveaway is starting... " + msg);
         state.opened = true;
         const interval = (state.interval = setInterval(() => {
           if (!state.opened) {
             clearInterval(interval);
             return;
           }
-          chatClient.say(
-            "A giveaway is ongoing... "+msg
-          );
+          chatClient.say("A giveaway is ongoing... " + msg);
         }, 4 * 60000));
         return;
       } else if (commandName === "!giveaway-reset") {
