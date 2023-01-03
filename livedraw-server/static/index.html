@@ -325,6 +325,44 @@
         border: 1px solid var(--color-main);
       }
 
+      .component-range-hslider {
+        text-align: center;
+      }
+      .component-range-hslider .label {
+        text-transform: uppercase;
+        font-size: 1em;
+        padding-bottom: 4px;
+        display: block;
+      }
+      .component-range-hslider .slider {
+        width: 148px;
+        height: 64px;
+        position: relative;
+        border: 1px solid var(--color-main);
+      }
+      .component-range-hslider .percent {
+        position: absolute;
+        height: 100%;
+        left: 0;
+        opacity: 0.3;
+        background-color: var(--color-main);
+      }
+      .component-range-hslider.loading .percent {
+        animation: infinite 2s loading;
+      }
+      .component-range-hslider .target {
+        position: absolute;
+        height: 120%;
+        top: -10%;
+        border: 1px dashed var(--color-main);
+      }
+      .component-range-hslider .current {
+        position: absolute;
+        height: 120%;
+        top: -10%;
+        border: 1px solid var(--color-main);
+      }
+
       .component-xy {
         text-align: center;
       }
@@ -583,73 +621,145 @@
       }
 
       function Range({ id, value, config }) {
-        const { min, max } = config;
-        return (
-          <div
-            className={
-              "component-range-vslider" +
-              (value.value === value.target ? "" : " loading")
-            }
-          >
-            <span className="label">{id}</span>
-            <div className="slider">
-              <div
-                className="percent"
-                style={{
-                  height:
-                    ((100 * (value.value - min)) / (max - min)).toFixed(1) +
-                    "%",
-                }}
-              />
-              <div
-                className="current"
-                style={{
-                  bottom:
-                    ((100 * (value.value - min)) / (max - min)).toFixed(1) +
-                    "%",
-                }}
-              />
-              {value.value === value.target ? null : (
+        const { min, max, display } = config;
+        if (display === "vslider") {
+          return (
+            <div
+              className={
+                "component-range-vslider" +
+                (value.value === value.target ? "" : " loading")
+              }
+            >
+              <span className="label">{id}</span>
+              <div className="slider">
                 <div
-                  className={
-                    "progressing " +
-                    (value.value < value.target ? "up" : "down")
-                  }
+                  className="percent"
                   style={{
-                    bottom:
-                      (
-                        (100 * (Math.min(value.target, value.value) - min)) /
-                        (max - min)
-                      ).toFixed(1) + "%",
                     height:
-                      (
-                        (100 * Math.abs(value.value - value.target)) /
-                        (max - min)
-                      ).toFixed(1) + "%",
-                  }}
-                >
-                  <div className="line" />
-                </div>
-              )}
-              {value.value === value.target ? null : (
-                <div
-                  className="target"
-                  style={{
-                    bottom:
-                      ((100 * (value.target - min)) / (max - min)).toFixed(1) +
+                      ((100 * (value.value - min)) / (max - min)).toFixed(1) +
                       "%",
                   }}
                 />
-              )}
-            </div>
+                <div
+                  className="current"
+                  style={{
+                    bottom:
+                      ((100 * (value.value - min)) / (max - min)).toFixed(1) +
+                      "%",
+                  }}
+                />
+                {value.value === value.target ? null : (
+                  <div
+                    className={
+                      "progressing " +
+                      (value.value < value.target ? "up" : "down")
+                    }
+                    style={{
+                      bottom:
+                        (
+                          (100 * (Math.min(value.target, value.value) - min)) /
+                          (max - min)
+                        ).toFixed(1) + "%",
+                      height:
+                        (
+                          (100 * Math.abs(value.value - value.target)) /
+                          (max - min)
+                        ).toFixed(1) + "%",
+                    }}
+                  >
+                    <div className="line" />
+                  </div>
+                )}
+                {value.value === value.target ? null : (
+                  <div
+                    className="target"
+                    style={{
+                      bottom:
+                        ((100 * (value.target - min)) / (max - min)).toFixed(
+                          1
+                        ) + "%",
+                    }}
+                  />
+                )}
+              </div>
 
-            <span className="value">
-              {config.format === "percentage"
-                ? (value.value * 100).toFixed(config.magnitude || 0) + "%"
-                : value.value.toFixed(config.magnitude || 1)}
-            </span>
-          </div>
-        );
+              <span className="value">
+                {config.format === "percentage"
+                  ? (value.value * 100).toFixed(config.magnitude || 0) + "%"
+                  : value.value.toFixed(config.magnitude || 1)}
+              </span>
+            </div>
+          );
+        } else if (display === "hslider") {
+          return (
+            <div
+              className={
+                "component-range-hslider" +
+                (value.value === value.target ? "" : " loading")
+              }
+            >
+              <span className="label">{id}</span>
+              <div className="slider">
+                <div
+                  className="percent"
+                  style={{
+                    width:
+                      ((100 * (value.value - min)) / (max - min)).toFixed(1) +
+                      "%",
+                  }}
+                />
+                <div
+                  className="current"
+                  style={{
+                    left:
+                      ((100 * (value.value - min)) / (max - min)).toFixed(1) +
+                      "%",
+                  }}
+                />
+                {value.value === value.target ? null : (
+                  <div
+                    className={
+                      "progressing " +
+                      (value.value < value.target ? "right" : "left")
+                    }
+                    style={{
+                      left:
+                        (
+                          (100 * (Math.min(value.target, value.value) - min)) /
+                          (max - min)
+                        ).toFixed(1) + "%",
+                      width:
+                        (
+                          (100 * Math.abs(value.value - value.target)) /
+                          (max - min)
+                        ).toFixed(1) + "%",
+                    }}
+                  >
+                    <div className="line" />
+                  </div>
+                )}
+                {value.value === value.target ? null : (
+                  <div
+                    className="target"
+                    style={{
+                      left:
+                        ((100 * (value.target - min)) / (max - min)).toFixed(
+                          1
+                        ) + "%",
+                    }}
+                  />
+                )}
+              </div>
+              <span className="value">
+                {config.format === "percentage"
+                  ? (value.value * 100).toFixed(config.magnitude || 0) + "%"
+                  : value.value.toFixed(config.magnitude || 1)}
+              </span>
+            </div>
+          );
+        }
+
+        return null;
       }
 
       function XY({ id, value, config }) {
