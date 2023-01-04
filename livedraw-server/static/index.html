@@ -289,12 +289,11 @@
 
       .component-range-vslider {
         text-align: center;
+        line-height: 1.4em;
       }
       .component-range-vslider .label {
         text-transform: uppercase;
         font-size: 1em;
-        padding-bottom: 4px;
-        display: block;
       }
       .component-range-vslider .slider {
         position: relative;
@@ -683,8 +682,16 @@
 
               <span className="value">
                 {config.format === "percentage"
-                  ? (value.value * 100).toFixed(config.magnitude || 0) + "%"
-                  : value.value.toFixed(config.magnitude || 1)}
+                  ? (value.value * 100).toFixed(
+                      typeof config.magnitude === "number"
+                        ? config.magnitude
+                        : 0
+                    ) + "%"
+                  : value.value.toFixed(
+                      typeof config.magnitude === "number"
+                        ? config.magnitude
+                        : 1
+                    )}
               </span>
             </div>
           );
@@ -761,22 +768,26 @@
       }
 
       function XY({ id, value, config, style }) {
-        const {styleScale}=config;
+        const { styleScale } = config;
         const eq =
           value.value[0] === value.target[0] &&
           value.value[1] === value.target[1];
         const scale = styleScale || (style && style.inputsScale) || 1;
         const size = 148 * scale;
+        const r = config.range || [-1, 1];
+        function toNorm(v) {
+          return lerp(r[0], r[1], v);
+        }
         return (
           <div className={"component-xy" + (eq ? "" : " loading")}>
             <span className="label">{id}</span>
-            <div className="content" style={{width:size,height:size}}>
+            <div className="content" style={{ width: size, height: size }}>
               <div
                 className="current"
                 style={{
                   height: "100%",
                   width: "2px",
-                  left: (50 + 50 * value.value[0]).toFixed(1) + "%",
+                  left: (100 * toNorm(value.value[0])).toFixed(1) + "%",
                 }}
               />
               <div
@@ -784,7 +795,7 @@
                 style={{
                   width: "100%",
                   height: "2px",
-                  top: (50 + 50 * value.value[1]).toFixed(1) + "%",
+                  top: (100 * toNorm(value.value[1])).toFixed(1) + "%",
                 }}
               />
               {eq ? null : (
@@ -794,7 +805,7 @@
                     style={{
                       height: "100%",
                       width: "2px",
-                      left: (50 + 50 * value.target[0]).toFixed(1) + "%",
+                      left: (100 * toNorm(value.target[0])).toFixed(1) + "%",
                     }}
                   />
                   <div
@@ -802,14 +813,29 @@
                     style={{
                       width: "100%",
                       height: "2px",
-                      top: (50 + 50 * value.target[1]).toFixed(1) + "%",
+                      top: (100 * toNorm(value.target[1])).toFixed(1) + "%",
                     }}
                   />
                   <svg width={size} height={size}>
-                    <path d={`M${value.value.map(v=>(0.5+0.5 * v)*size).join(",")} L${value.target.map(v=>(0.5+0.5 * v)*size).join(",")}`} stroke-width="1" fill="none"
-                          stroke-dasharray="5,5" stroke-dashoffset="0" style={{ transition: "none"}}>
-                      <animate attributeName="stroke-dashoffset" from="10" to="0"
-                              dur="0.5s" repeatCount="indefinite"/>
+                    <path
+                      d={`M${value.value
+                        .map((v) => toNorm(v) * size)
+                        .join(",")} L${value.target
+                        .map((v) => toNorm(v) * size)
+                        .join(",")}`}
+                      stroke-width="1"
+                      fill="none"
+                      stroke-dasharray="5,5"
+                      stroke-dashoffset="0"
+                      style={{ transition: "none" }}
+                    >
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        from="10"
+                        to="0"
+                        dur="0.5s"
+                        repeatCount="indefinite"
+                      />
                     </path>
                   </svg>
                 </div>
@@ -899,6 +925,9 @@
       function mix(a, b, x) {
         return a * (1 - x) + b * x;
       }
+      function lerp(a, b, x) {
+        return (x - a) / (b - a);
+      }
 
       function commandValueExample(conf, k) {
         switch (conf.type) {
@@ -916,7 +945,7 @@
                 : Math.random() < 0.3
                 ? (100 * Math.random()).toFixed(0) + "%"
                 : mix(conf.min, conf.max, Math.random()).toFixed(
-                    conf.magnitude || 1
+                    typeof conf.magnitude === "number" ? conf.magnitude : 1
                   ))
             );
           default:
@@ -925,18 +954,21 @@
       }
 
       const Styles = ({ config }) => {
+        const style = { ...config.style };
+        const dustColor = style.dustColor || "#68c0ff";
+        const disabledColor = style.disabledColor || "#43778a";
         return (
           <style>{`:root {
-        --color-main: ${(config.style && config.style.colorMain) || "#0ab1f0"};
-        --color-live: #f00a0a;
-        --bg: radial-gradient(circle, #092643, #0c151c);
-        --camera-highlight: radial-gradient(circle, #68c0ff08, #5db9ff7e);
+        --color-main: ${style.colorMain || "#0ab1f0"};
+        --color-live: ${style.colorLive || "#f00a0a"};
+        --bg: ${style.bg || "radial-gradient(circle, #092643, #0c151c)"};
+        --camera-highlight: radial-gradient(circle, ${dustColor}08, ${dustColor}7e);
         /* too much repetition here... */
-        --color-disabled: #43778a;
+        --color-disabled: ${disabledColor};
         --camera-highlight-disabled: radial-gradient(
           circle,
-          #4f728c98,
-          #52738dd9
+          ${disabledColor}98,
+          ${disabledColor}d9
         );
       }`}</style>
         );

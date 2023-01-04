@@ -472,7 +472,7 @@ export default function (
   manageGiveway(chatClient, () => config);
 
   // GO!
-  chatClient.say("livedraw-server: state started!");
+  // chatClient.say("livedraw-server: state started!");
 }
 
 function manageGiveway(chatClient: StreamChatClient, getConfig: () => Config) {

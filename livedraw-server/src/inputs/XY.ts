@@ -3,7 +3,10 @@ import { InputConfig, Module } from "../types";
 type RangeConfig = InputConfig & {
   decay: number;
   initialValue: [number, number];
+  range?: [number, number];
 };
+
+const defaultRange = [-1, 1];
 
 const rangeAlias: { [_: string]: string } = {
   max: "100%",
@@ -36,16 +39,20 @@ const Range: Module<
   update: (s, { dt }, { config, currentSpeed }) => {
     let { target, value } = s;
     let changes = false;
+    const r = config.range || defaultRange;
+    const rangediff = r[1] - r[0];
     const newValue = value.map((v, i) => {
-      const t = target[i];
+      let t = target[i];
       const diff = Math.abs(t - v);
       if (diff == 0) {
         return v;
       }
       changes = true;
-      if (diff < 0.02) {
+      if (diff < 0.01 * rangediff) {
         return t;
       }
+      t = Math.max(r[0], Math.min(t, r[1]));
+      v = Math.max(r[0], Math.min(v, r[1]));
       return (
         v +
         (t - v) * Math.min((dt / 1000) * (config.decay || 0) * currentSpeed, 1)
@@ -71,6 +78,7 @@ const Range: Module<
       }
       const value: [number, number] = [...s.value];
       const target: [number, number] = [...s.target];
+      const rg = config.range || defaultRange;
       r.slice(0, 2).forEach((txt, i) => {
         if (txt in rangeAlias) {
           const str = rangeAlias[txt];
@@ -90,7 +98,7 @@ const Range: Module<
             if (isPercent) {
               n = n / 100;
             }
-            n = Math.max(-1, Math.min(n, 1));
+            n = Math.max(rg[0], Math.min(n, rg[1]));
             if (context.isAdmin && msg.includes("force")) {
               value[i] = n;
             }
