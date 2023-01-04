@@ -68,6 +68,7 @@ const Range: Module<
     if (context.isAdmin && msg === "!jump-to-target") {
       return { target: s.target, value: s.target };
     }
+    const inactive = s.target[0] === s.value[0] && s.target[1] === s.value[1];
     const isRand = msg.startsWith("!rand");
     const head = "!" + id;
     if ((context.username && msg.startsWith(head)) || isRand) {
@@ -85,8 +86,8 @@ const Range: Module<
           txt = str;
         } else if (txt === "def" || txt === "default" || txt === "initial") {
           txt = String(config.initialValue[i] || "");
-        } else if (txt === "rand" || isRand) {
-          txt = String(mix(-1, 1, Math.random()));
+        } else if ((txt === "rand" || isRand) && inactive) {
+          txt = String(mix(rg[0], rg[1], Math.random()));
         }
         const isPercent = txt.includes("%");
         const m = txt.match(/([\-0-9.]+)/s);

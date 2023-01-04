@@ -55,6 +55,7 @@ const Range: Module<
     if (context.isAdmin && msg === "!jump-to-target") {
       return { target: s.target, value: s.target };
     }
+    const inactive = s.target === s.value;
     const isRand = msg.startsWith("!rand");
     const head = "!" + id;
     if ((context.username && msg.startsWith(head)) || isRand) {
@@ -69,7 +70,7 @@ const Range: Module<
         remain === "initial"
       ) {
         remain = String(config.initialValue);
-      } else if (remain === "rand" || isRand) {
+      } else if ((remain === "rand" || isRand) && inactive) {
         remain = String(mix(config.min, config.max, Math.random()));
       }
       const isPercent = remain.includes("%");
