@@ -245,6 +245,20 @@ export default function (
     t = n;
   }, updateFrequency);
 
+  let berserkOutTimer;
+
+  function berserkOut() {
+    if (state.rootState.mode !== "berserk") {
+      return;
+    }
+    let newState: State = { ...state };
+    newState.rootState = {
+      ...newState.rootState,
+      mode: "normal",
+    };
+    state = newState;
+  }
+
   // Listen to the chat
   function updateWithChatMessage(
     state: State,
@@ -272,6 +286,14 @@ export default function (
           };
         } else {
           // TODO timeout?
+          const possibletimer = parseInt(arg1);
+          if (
+            !isNaN(possibletimer) &&
+            isFinite(possibletimer) &&
+            possibletimer > 0
+          ) {
+            berserkOutTimer = setTimeout(berserkOut, 1000 * possibletimer);
+          }
           newState.rootState = {
             ...newState.rootState,
             mode: "berserk",
