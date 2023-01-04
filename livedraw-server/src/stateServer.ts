@@ -442,11 +442,16 @@ export default function (
     const user = context.displayName || context.username;
     if (!user) return;
     const message: Message = { text: msg, user };
-    last50 =
-      last50.length >= 50
-        ? last50.slice(1).concat([message])
-        : last50.concat([message]);
-    chatListeners.forEach((f) => f(message));
+    if (context.isAdmin && msg === "!clear") {
+      last50 = [];
+      htmlListeners.forEach((f) => f());
+    } else {
+      last50 =
+        last50.length >= 50
+          ? last50.slice(1).concat([message])
+          : last50.concat([message]);
+      chatListeners.forEach((f) => f(message));
+    }
   });
 
   app.get("/chatbox/messages", (req, res) => {
