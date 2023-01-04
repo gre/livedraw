@@ -28,6 +28,10 @@ pub trait LivedrawArt {
 
   fn get_dimension(&self) -> (f64, f64);
 
+  fn get_predictive_max_next_increments(&self) -> Option<usize> {
+    None
+  }
+
   fn estimate_total_increments(&self) -> usize;
 
   fn actions_before_increment(&self, index: usize) -> Vec<ArtAction>;
@@ -189,12 +193,18 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
 fn generate_svg_all<T: LivedrawArt + Clone>(
   art: &T,
   input: &Value,
+  max_iterations: Option<usize>,
 ) -> Document {
   let mut copy = art.clone();
   let (width, height) = copy.get_dimension();
   let mut doc = svg_document(width, height);
   let mut i = 0;
   loop {
+    if let Some(max) = max_iterations {
+      if i > max {
+        break;
+      }
+    }
     match copy.draw_increment(&input, i) {
       ArtIncrement::End => {
         break;
@@ -215,7 +225,8 @@ fn generate_svg_all<T: LivedrawArt + Clone>(
 }
 
 fn generate_predictive<T: LivedrawArt + Clone>(art: &T, input: &Value) {
-  let predictive_doc = generate_svg_all(art, input);
+  let predictive_doc =
+    generate_svg_all(art, input, art.get_predictive_max_next_increments());
   svg::save("files/predictive.svg", &predictive_doc).unwrap();
   plot_update(PlotUpdateAction::PlotPredictiveWritten());
 }
