@@ -13,7 +13,7 @@ if (!folder) {
 const platform = twitch({ onConnectedHandler });
 
 function onConnectedHandler() {
-  const port = 4628;
+  const port = parseInt(process.env.PORT || "4628", 10);
   const app = express();
   app.use(morgan("tiny"));
   app.use(express.static("static"));

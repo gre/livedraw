@@ -313,7 +313,12 @@ export default function (
     }
 
     for (const id in mods) {
-      if (context.isAdmin && (msg === "!reset " + id || msg === "!reset")) {
+      if (
+        context.isAdmin &&
+        (msg.startsWith("!reset " + id + " ") ||
+          msg === "!reset" + id ||
+          msg === "!reset")
+      ) {
         newState[id] = mods[id].initialComponentState(globalContext(id));
       } else if (context.isAdmin && msg === "!flush") {
         newState[id] = mods[id].flush(state[id], globalContext(id));

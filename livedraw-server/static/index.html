@@ -370,8 +370,6 @@
       }
       .component-xy .content {
         position: relative;
-        height: 148px;
-        width: 148px;
         border: 1px dashed var(--color-main);
       }
       .component-xy .current {
@@ -762,14 +760,17 @@
         return null;
       }
 
-      function XY({ id, value, config }) {
+      function XY({ id, value, config, style }) {
+        const {styleScale}=config;
         const eq =
           value.value[0] === value.target[0] &&
           value.value[1] === value.target[1];
+        const scale = styleScale || (style && style.inputsScale) || 1;
+        const size = 148 * scale;
         return (
           <div className={"component-xy" + (eq ? "" : " loading")}>
             <span className="label">{id}</span>
-            <div className="content">
+            <div className="content" style={{width:size,height:size}}>
               <div
                 className="current"
                 style={{
@@ -804,6 +805,13 @@
                       top: (50 + 50 * value.target[1]).toFixed(1) + "%",
                     }}
                   />
+                  <svg width={size} height={size}>
+                    <path d={`M${value.value.map(v=>(0.5+0.5 * v)*size).join(",")} L${value.target.map(v=>(0.5+0.5 * v)*size).join(",")}`} stroke-width="1" fill="none"
+                          stroke-dasharray="5,5" stroke-dashoffset="0" style={{ transition: "none"}}>
+                      <animate attributeName="stroke-dashoffset" from="10" to="0"
+                              dur="0.5s" repeatCount="indefinite"/>
+                    </path>
+                  </svg>
                 </div>
               )}
             </div>
