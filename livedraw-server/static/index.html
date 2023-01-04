@@ -289,7 +289,7 @@
 
       .component-range-vslider {
         text-align: center;
-        line-height: 1.4em;
+        line-height: 1.5em;
       }
       .component-range-vslider .label {
         text-transform: uppercase;
@@ -311,19 +311,20 @@
       }
       .component-range-vslider .target {
         position: absolute;
-        width: 120%;
-        left: -10%;
+        width: 110%;
+        left: -5%;
         border: 1px dashed var(--color-main);
       }
       .component-range-vslider .current {
         position: absolute;
-        width: 120%;
-        left: -10%;
+        width: 110%;
+        left: -5%;
         border: 1px solid var(--color-main);
       }
 
       .component-range-hslider {
         text-align: center;
+        line-height: 1.5em;
       }
       .component-range-hslider .label {
         text-transform: uppercase;
@@ -347,14 +348,14 @@
       }
       .component-range-hslider .target {
         position: absolute;
-        height: 120%;
-        top: -10%;
+        height: 110%;
+        top: -5%;
         border: 1px dashed var(--color-main);
       }
       .component-range-hslider .current {
         position: absolute;
-        height: 120%;
-        top: -10%;
+        height: 110%;
+        top: -5%;
         border: 1px solid var(--color-main);
       }
 
@@ -627,7 +628,7 @@
                 (value.value === value.target ? "" : " loading")
               }
             >
-              <span className="label">{id}</span>
+              <span className="label">!{id}</span>
               <div className="slider" style={{ width: sizel, height: sizeL }}>
                 <div
                   className="percent"
@@ -703,7 +704,7 @@
                 (value.value === value.target ? "" : " loading")
               }
             >
-              <span className="label">{id}</span>
+              <span className="label">!{id}</span>
               <div className="slider" style={{ width: sizeL, height: sizel }}>
                 <div
                   className="percent"
