@@ -55,8 +55,9 @@ const Range: Module<
     if (context.isAdmin && msg === "!jump-to-target") {
       return { target: s.target, value: s.target };
     }
+    const isRand = msg.startsWith("!rand");
     const head = "!" + id;
-    if (context.username && msg.startsWith(head)) {
+    if ((context.username && msg.startsWith(head)) || isRand) {
       let remain: string = msg.slice(head.length).trim();
       let firstWord: string = remain.split(" ")[0];
       if (firstWord in rangeAlias) {
@@ -68,7 +69,7 @@ const Range: Module<
         remain === "initial"
       ) {
         remain = String(config.initialValue);
-      } else if (remain === "rand") {
+      } else if (remain === "rand" || isRand) {
         remain = String(mix(config.min, config.max, Math.random()));
       }
       const isPercent = remain.includes("%");

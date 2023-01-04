@@ -61,10 +61,11 @@ const Range: Module<
     if (context.isAdmin && msg === "!jump-to-target") {
       return { target: s.target, value: s.target };
     }
+    const isRand = msg.startsWith("!rand");
     const head = "!" + id;
-    if (context.username && msg.startsWith(head)) {
+    if ((context.username && msg.startsWith(head)) || isRand) {
       const r = msg.slice(head.length).split(/\s+/).filter(Boolean);
-      if (r.length === 0) return s;
+      if (r.length === 0 && !isRand) return s;
       if (r.length === 1) {
         r.push(r[0]);
       }
@@ -76,7 +77,7 @@ const Range: Module<
           txt = str;
         } else if (txt === "def" || txt === "default" || txt === "initial") {
           txt = String(config.initialValue[i] || "");
-        } else if (txt === "rand") {
+        } else if (txt === "rand" || isRand) {
           txt = String(mix(-1, 1, Math.random()));
         }
         const isPercent = txt.includes("%");
