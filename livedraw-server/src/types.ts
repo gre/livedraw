@@ -80,6 +80,8 @@ export type Module<Config extends InputConfig, ComponentState, Value> = {
 
   // get the public value object of the state that is exposed to the UI and art side
   mapToValue: (state: ComponentState, ctx: InputContext<Config>) => Value;
+
+  noArguments?: boolean
 };
 
 export type StreamPlatformInput = {

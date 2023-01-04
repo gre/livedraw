@@ -322,7 +322,10 @@ export default function (
         newState[id] = mods[id].initialComponentState(globalContext(id));
       } else if (context.isAdmin && msg === "!flush") {
         newState[id] = mods[id].flush(state[id], globalContext(id));
-      } else if (msg === "!help " + id) {
+      } else if (
+        msg === "!help " + id ||
+        (msg === "!" + id && !mods[id].noArguments)
+      ) {
         chatClient.say(mods[id].doc(globalContext(id)));
       } else {
         newState[id] = mods[id].updateWithChatMessage(
