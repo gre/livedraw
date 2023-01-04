@@ -297,8 +297,6 @@
         display: block;
       }
       .component-range-vslider .slider {
-        height: 148px;
-        width: 64px;
         position: relative;
         border: 1px solid var(--color-main);
       }
@@ -335,8 +333,6 @@
         display: block;
       }
       .component-range-hslider .slider {
-        width: 148px;
-        height: 64px;
         position: relative;
         border: 1px solid var(--color-main);
       }
@@ -620,8 +616,12 @@
         );
       }
 
-      function Range({ id, value, config }) {
-        const { min, max, display } = config;
+      function Range({ id, value, config, style }) {
+        const { min, max, display, styleScale } = config;
+        const scale = styleScale || (style && style.inputsScale) || 1;
+        const sizeL = 148 * scale;
+        const sizel = 64 * scale;
+
         if (display === "vslider") {
           return (
             <div
@@ -631,7 +631,7 @@
               }
             >
               <span className="label">{id}</span>
-              <div className="slider">
+              <div className="slider" style={{ width: sizel, height: sizeL }}>
                 <div
                   className="percent"
                   style={{
@@ -699,7 +699,7 @@
               }
             >
               <span className="label">{id}</span>
-              <div className="slider">
+              <div className="slider" style={{ width: sizeL, height: sizel }}>
                 <div
                   className="percent"
                   style={{
@@ -818,7 +818,7 @@
         XY: React.memo(XY),
       };
 
-      const LayoutCellInner = ({ value, config, id }) => {
+      const LayoutCellInner = ({ value, config, id, style }) => {
         const [noupdates, setNoupdates] = useState(true);
 
         useEffect(() => {
@@ -840,7 +840,7 @@
             }
             key={id}
           >
-            <C value={value} config={config} id={id} />
+            <C value={value} config={config} id={id} style={style} />
           </div>
         );
       };
@@ -853,7 +853,8 @@
             style={{
               display: "flex",
               flexDirection: direction,
-              justifyContent: "space-between",
+              justifyContent:
+                (config.style && config.style.spacing) || "space-between",
             }}
           >
             {layout.map((id) => {
@@ -870,7 +871,13 @@
               }
               const input = config.inputs[id];
               return (
-                <LayoutCell key={id} value={state[id]} config={input} id={id} />
+                <LayoutCell
+                  key={id}
+                  value={state[id]}
+                  config={input}
+                  id={id}
+                  style={config.style}
+                />
               );
             })}
           </div>
