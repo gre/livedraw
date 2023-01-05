@@ -22,28 +22,55 @@ pub enum ArtIncrement {
 
 // LIB
 
-// TODO parametric type with parsed version of "Value"
+/**
+ * LivedrawArt is a trait that defines the behavior of a "livedraw" art piece, which is an art piece that is drawn incrementally in real time.
+ * The art is designed to be written in small increments, to create a more realistic "real time" experience.
+ * Each of these steps is called a "increment".
+ * It is important to find the right balance between the number of increments and the time between increments, as too many increments may result in a slower drawing process, while too few increments may result in a less smooth drawing experience.
+ */
 pub trait LivedrawArt {
-  fn delay_between_increments(&self) -> Duration;
+  /**
+   * Draws a part of the art using the input values, and returns SVG groups that represent the part to draw.
+   * Each group conventionally represents a color layer and can be merged by index.
+   * If no groups are returned, it will shorten the delay between runs.
+   */
+  fn draw_increment(&mut self, input: &Value, index: usize) -> ArtIncrement;
 
+  /**
+   * Returns the (width, height) of the SVG plot in millimeters.
+   */
   fn get_dimension(&self) -> (f64, f64);
 
+  /**
+   * Estimates the total number of increments needed for the art piece. This is used to create a progress bar.
+   */
+  fn estimate_total_increments(&self) -> usize;
+
+  /**
+   * Optionally returns actions to execute before an increment. These actions may include pausing or writing in a chat.
+   */
+  fn actions_before_increment(&self, index: usize) -> Vec<ArtAction> {
+    vec![]
+  }
+
+  /**
+   * Limits the maximum number of increments that can be predicted.
+   */
   fn get_predictive_max_next_increments(&self) -> Option<usize> {
     None
   }
 
-  fn estimate_total_increments(&self) -> usize;
-
-  fn actions_before_increment(&self, index: usize) -> Vec<ArtAction>;
   /**
-   * draw part of the art using the input values
-   * otherwise returns svg groups that represent the part to draw.
-   * each group conventionally can be merged by index and represent a color layer.
-   * if no groups are returned, it will shorten the delay between runs
+   * Returns the minimum time between two increments.
    */
-  fn draw_increment(&mut self, input: &Value, index: usize) -> ArtIncrement;
+  fn delay_between_increments(&self) -> Duration {
+    Duration::from_secs(1)
+  }
 }
 
+/**
+ * a LivedrawArt also need to be simulated in order to test the art without running for it. typically during its development.
+ */
 pub trait LivedrawArtSimulation {
   /**
    * for testing reason, feed a simulated input
