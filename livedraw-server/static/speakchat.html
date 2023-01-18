@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <button id="start">START</button>
+    <script src="https://unpkg.com/language-detector@1.0.1/languageDetector.min.js"></script>
+    <script>
+      document.getElementById("start").addEventListener("click", (e) => {
+        e.target.parentNode.removeChild(e.target);
+      });
+
+      const eventSource = new EventSource("/speak/messages");
+
+      eventSource.onmessage = (e) => {
+        const { user, text } = JSON.parse(e.data);
+        console.log(user, text);
+        const sentence = /*user + " says: " +*/ text;
+        const lang = detectLanguage(text);
+        const msg = new SpeechSynthesisUtterance(sentence);
+        if (lang) msg.lang = lang;
+        window.speechSynthesis.speak(msg);
+      };
+      eventSource.onerror = (e) => {
+        setTimeout(reconnectLoop, 1000);
+        eventSource.close();
+      };
+
+      function reconnectLoop() {
+        const eventSource = new EventSource("/speak/messages");
+        eventSource.onmessage = (e) => {
+          console.log("RELOAD");
+          location.href = "/";
+          eventSource.close();
+        };
+        eventSource.onerror = (e) => {
+          eventSource.close();
+          setTimeout(reconnectLoop, 1000);
+        };
+      }
+    </script>
+  </body>
+</html>

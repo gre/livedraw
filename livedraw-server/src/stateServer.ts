@@ -477,6 +477,23 @@ export default function (
     req.on("close", end);
   });
 
+  app.get("/speak/messages", (req, res) => {
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("connection", "keep-alive");
+    function listen(message: Message) {
+      res.write(`data: ${JSON.stringify(message)}\n\n`);
+    }
+    function end() {
+      const i = chatListeners.indexOf(listen);
+      if (i >= 0) chatListeners.splice(i, 1);
+      res.send();
+    }
+    chatListeners.push(listen);
+    req.on("close", end);
+  });
+
   manageGiveway(chatClient, () => config);
 
   // GO!
