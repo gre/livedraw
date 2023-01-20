@@ -18,12 +18,14 @@ import KeyboardCurve from "./inputs/KeyboardCurve";
 import Poll from "./inputs/Poll";
 import XY from "./inputs/XY";
 import Range from "./inputs/Range";
+import CounterBtn from "./inputs/CounterBtn";
 
 const modules: { [_: string]: Module<any, any, any> } = {
   KeyboardCurve,
   Poll,
   Range,
   XY,
+  CounterBtn,
 };
 
 export default function (

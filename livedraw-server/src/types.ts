@@ -81,6 +81,7 @@ export type Module<Config extends InputConfig, ComponentState, Value> = {
   // get the public value object of the state that is exposed to the UI and art side
   mapToValue: (state: ComponentState, ctx: InputContext<Config>) => Value;
 
+  // if true, the input does not require any arguments in the chat message
   noArguments?: boolean;
 };
 

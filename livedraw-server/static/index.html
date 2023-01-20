@@ -231,6 +231,7 @@
       }
 
       .layout-input {
+        align-self: center;
         margin: 8px 16px;
       }
 
@@ -247,6 +248,29 @@
         transition: 1s;
         opacity: 0.8;
         filter: drop-shadow(0px 0px 6px var(--color-main));
+      }
+
+      .component-counter-btn {
+        color: var(--color-main);
+        border: 2px solid var(--color-main);
+        border-radius: 2px;
+        padding: 0.4em 1em;
+        position: relative;
+      }
+      .component-counter-btn::before {
+        background: var(--color-main);
+        opacity: 0;
+        content: "";
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        position: absolute;
+        transition: opacity 0.2s;
+      }
+      .component-counter-btn.active::before {
+        opacity: 0.3;
+        transition: opacity 0.1s;
       }
 
       .component-poll {
@@ -614,6 +638,27 @@
         );
       }
 
+      function CounterBtn({ id, value, config, style }) {
+        const { min, max, display } = config;
+        const scale = config.scale || style.inputsScale || 1;
+
+        const [noupdates, setNoupdates] = useState(true);
+        useEffect(() => {
+          setNoupdates(false);
+          const t = setTimeout(() => setNoupdates(true), 200);
+          return () => clearTimeout(t);
+        }, [value.value]);
+
+        return (
+          <span
+            className={"component-counter-btn" + (!noupdates ? " active" : "")}
+            style={{ fontSize: scale + "em" }}
+          >
+            !{id}
+          </span>
+        );
+      }
+
       function Range({ id, value, config, style }) {
         const { min, max, display, styleScale } = config;
         const scale = styleScale || (style && style.inputsScale) || 1;
@@ -851,6 +896,7 @@
         Poll: React.memo(Poll),
         Range: React.memo(Range),
         XY: React.memo(XY),
+        CounterBtn: React.memo(CounterBtn),
       };
 
       const LayoutCellInner = ({ value, config, id, style }) => {
