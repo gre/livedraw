@@ -1,6 +1,6 @@
 [package]
 name = "livedraw"
-version = "0.2.1"
+version = "0.2.2"
 description = "livedraw is a real-time collaborative pen plotter stream experience – this rust library contains the art utilities to build the art daemon"
 authors = ["@greweb"]
 keywords = ["generative", "creativecoding"]
@@ -11,7 +11,7 @@ repository = "https://github.com/gre/livedraw"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-svg = "0.12.1"
+svg = "0.13"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 isahc = "1.7.2"
