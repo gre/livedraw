@@ -7,7 +7,7 @@ use std::{
 };
 use svg::{
   node::{
-    element::{path::Data, tag::Type, Element, Group, Path},
+    element::{path::Data, Element, Group, Path},
     Attributes,
   },
   Document, Node,
@@ -53,7 +53,7 @@ pub trait LivedrawArt {
   /**
    * Optionally returns actions to execute before an increment. These actions may include pausing or writing in a chat.
    */
-  fn actions_before_increment(&self, index: usize) -> Vec<ArtAction> {
+  fn actions_before_increment(&self, _index: usize) -> Vec<ArtAction> {
     vec![]
   }
 
@@ -290,7 +290,7 @@ fn plot_read_previous_plot_data() -> Option<Attributes> {
     .and_then(|doc| {
       for event in doc {
         match event {
-          svg::parser::Event::Tag("plotdata", Type::Start, attributes) => {
+          svg::parser::Event::Tag("plotdata", _, attributes) => {
             // delete file
             std::fs::remove_file("files/increment.finished.svg").unwrap();
             return Some(attributes);
