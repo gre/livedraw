@@ -116,6 +116,7 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
   let predictive_svg_freq = Duration::from_millis(500);
 
   std::fs::remove_file("files/increment.svg").unwrap_or(());
+  std::fs::remove_file("files/increment.finished.svg").unwrap_or(());
   std::fs::remove_file("files/predictive.svg").unwrap_or(());
   std::fs::remove_file("files/all.svg").unwrap_or(());
   std::fs::create_dir_all("files").unwrap();
