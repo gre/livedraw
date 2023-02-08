@@ -19,7 +19,8 @@ pub enum ArtAction {
 }
 pub enum ArtIncrement {
   // layers of SVG groups
-  SVG(Vec<Group>),
+  // the first point that will be drawn in mm (corresponding to first point in first element of the svg)
+  SVG(Vec<Group>, (f64, f64)),
   Continue,
   End,
 }
@@ -101,7 +102,7 @@ pub fn livedraw_start_simulation<
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts) => {
+      ArtIncrement::SVG(parts, _) => {
         for part in parts {
           doc = doc.add(part);
         }
@@ -178,7 +179,7 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts) => {
+      ArtIncrement::SVG(parts, first_point) => {
         for part in parts {
           doc = doc.add(part.clone());
           all_doc = all_doc.add(part.clone());
@@ -214,6 +215,9 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
             last_x -= width;
             (last_x, last_y) = (-last_y, last_x);
           }
+
+          last_x = -last_x + first_point.0;
+          last_y = -last_y + first_point.1;
 
           attributes.insert("last_x".to_string(), last_x.to_string().into());
           attributes.insert("last_y".to_string(), last_y.to_string().into());
@@ -326,7 +330,7 @@ fn generate_svg_all<T: LivedrawArt + Clone>(
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts) => {
+      ArtIncrement::SVG(parts, _) => {
         for part in parts {
           doc = doc.add(part);
         }
