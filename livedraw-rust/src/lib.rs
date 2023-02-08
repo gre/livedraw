@@ -20,7 +20,7 @@ pub enum ArtAction {
 pub enum ArtIncrement {
   // layers of SVG groups
   // the first point that will be drawn in mm (corresponding to first point in first element of the svg)
-  SVG(Vec<Group>, (f64, f64)),
+  SVG(Vec<Group>),
   Continue,
   End,
 }
@@ -102,7 +102,7 @@ pub fn livedraw_start_simulation<
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts, _) => {
+      ArtIncrement::SVG(parts) => {
         for part in parts {
           doc = doc.add(part);
         }
@@ -179,7 +179,7 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts, first_point) => {
+      ArtIncrement::SVG(parts) => {
         for part in parts {
           doc = doc.add(part.clone());
           all_doc = all_doc.add(part.clone());
@@ -203,24 +203,6 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
 
           // set pause_ref to 0
           attributes.insert("pause_ref".to_string(), "0".to_string().into());
-
-          // set last_x, last_y
-          let mut last_x =
-            attributes.get("last_x").unwrap().parse::<f64>().unwrap();
-          let mut last_y =
-            attributes.get("last_y").unwrap().parse::<f64>().unwrap();
-
-          if should_rotate_orientation {
-            // portrait -> landscape
-            last_x -= width;
-            (last_x, last_y) = (-last_y, last_x);
-          }
-
-          last_x = -last_x + first_point.0;
-          last_y = -last_y + first_point.1;
-
-          attributes.insert("last_x".to_string(), last_x.to_string().into());
-          attributes.insert("last_y".to_string(), last_y.to_string().into());
 
           let mut new_element = Element::new("plotdata");
           for attr in attributes {
@@ -330,7 +312,7 @@ fn generate_svg_all<T: LivedrawArt + Clone>(
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts, _) => {
+      ArtIncrement::SVG(parts) => {
         for part in parts {
           doc = doc.add(part);
         }
