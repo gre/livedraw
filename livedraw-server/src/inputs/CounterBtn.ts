@@ -11,7 +11,6 @@ const CounterBtn: Module<
   { value: number },
   { value: number }
 > = {
-
   noArguments: true,
 
   doc: ({ config, id }) => "!" + id + " : " + (config.description || ""),

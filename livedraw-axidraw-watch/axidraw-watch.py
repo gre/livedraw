@@ -15,17 +15,35 @@ def main(folder):
     print("wait for file", filepath)
     while not os.path.isfile(filepath):
       time.sleep(0.1)
+
+    # read filepath and search for word '<plotdata'. true if found
+    plotdata = False
+    with open(filepath, "r") as f:
+      for line in f:
+        if "<plotdata" in line:
+          plotdata = True
+          break
     
     print("plotting", filepath)
     ad.plot_setup(filepath)
     axidraw_options.set_defaults(ad)
     ad.errors.connect = True
     ad.errors.button = True
-    ad.plot_run()
+    
+    if plotdata:
+      ad.options.mode = "res_plot"
+    else:
+      ad.options.mode = "plot"
+    
+    output_svg = ad.plot_run(True)
 
-    # delete the file we plotted
-    print("removing file", filepath)
+    # save the output_svg file we plotted
+    with open(os.path.join(directory_name, "files/increment.finished.svg"), "w") as f:
+      f.write(output_svg)
+
+    # delete increment.svg
     os.remove(filepath)
+
 
 if __name__ == '__main__':
   filepath = sys.argv[1]

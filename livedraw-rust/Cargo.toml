@@ -1,6 +1,6 @@
 [package]
 name = "livedraw"
-version = "0.1.2"
+version = "0.2.0"
 description = "livedraw is a real-time collaborative pen plotter stream experience – this rust library contains the art utilities to build the art daemon"
 authors = ["@greweb"]
 keywords = ["generative", "creativecoding"]

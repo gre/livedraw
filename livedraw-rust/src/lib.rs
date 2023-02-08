@@ -6,8 +6,11 @@ use std::{
   time::{Duration, Instant},
 };
 use svg::{
-  node::element::{path::Data, Group, Path},
-  Document,
+  node::{
+    element::{path::Data, tag::Type, Element, Group, Path},
+    Attributes,
+  },
+  Document, Node,
 };
 
 pub enum ArtAction {
@@ -15,7 +18,9 @@ pub enum ArtAction {
   ChatMessage(String),
 }
 pub enum ArtIncrement {
-  SVG(Vec<Group>),
+  // layers of SVG groups
+  // the first point that will be drawn in mm (corresponding to first point in first element of the svg)
+  SVG(Vec<Group>, (f64, f64)),
   Continue,
   End,
 }
@@ -97,7 +102,7 @@ pub fn livedraw_start_simulation<
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts) => {
+      ArtIncrement::SVG(parts, _) => {
         for part in parts {
           doc = doc.add(part);
         }
@@ -118,6 +123,8 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
 
   let (width, height) = art.get_dimension();
 
+  let should_rotate_orientation = width < height;
+
   plot_update(PlotUpdateAction::PlotArtStart());
   let delay = art.delay_between_increments();
   let mut i: usize = 0;
@@ -125,6 +132,7 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
   let mut last_input = get_input();
   generate_predictive(art, &last_input);
 
+  // increments loop
   loop {
     let before = Instant::now();
     let mut doc = svg_document(width, height);
@@ -170,11 +178,56 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts) => {
+      ArtIncrement::SVG(parts, first_point) => {
         for part in parts {
           doc = doc.add(part.clone());
           all_doc = all_doc.add(part.clone());
         }
+        // add a pause for the plotter
+        doc = doc.add(
+          svg::node::element::Group::new()
+            .set("inkscape:groupmode", "layer")
+            .set("id", "force_pause")
+            .set("inkscape:label", "!"),
+        );
+        // add <plotdata> element to optimise pen travel and start from previous position
+        if let Some(plotdata_attributes) = plot_read_previous_plot_data() {
+          let mut attributes = plotdata_attributes.clone();
+
+          // set layer to -1
+          attributes.insert("layer".to_string(), "-1".to_string().into());
+
+          // set pause_dist to 0
+          attributes.insert("pause_dist".to_string(), "0".to_string().into());
+
+          // set pause_ref to 0
+          attributes.insert("pause_ref".to_string(), "0".to_string().into());
+
+          // set last_x, last_y
+          let mut last_x =
+            attributes.get("last_x").unwrap().parse::<f64>().unwrap();
+          let mut last_y =
+            attributes.get("last_y").unwrap().parse::<f64>().unwrap();
+
+          if should_rotate_orientation {
+            // portrait -> landscape
+            last_x -= width;
+            (last_x, last_y) = (-last_y, last_x);
+          }
+
+          last_x = -last_x + first_point.0;
+          last_y = -last_y + first_point.1;
+
+          attributes.insert("last_x".to_string(), last_x.to_string().into());
+          attributes.insert("last_y".to_string(), last_y.to_string().into());
+
+          let mut new_element = Element::new("plotdata");
+          for attr in attributes {
+            new_element.assign(attr.0, attr.1);
+          }
+          doc = doc.add(new_element);
+        }
+
         plot_update(PlotUpdateAction::PlotIncrStart(i));
         svg::save("files/increment.svg", &doc).unwrap();
         svg::save("files/all.svg", &all_doc).unwrap();
@@ -214,7 +267,43 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
       }
     }
   }
+
+  plot_cleanup(width, height);
+
   plot_update(PlotUpdateAction::PlotArtStop());
+}
+
+fn plot_cleanup(width: f64, height: f64) {
+  if let Some(attrs) = plot_read_previous_plot_data() {
+    let mut doc = svg_document(width, height);
+    let mut new_element = Element::new("plotdata");
+    for attr in attrs {
+      new_element.assign(attr.0, attr.1);
+    }
+    doc = doc.add(new_element);
+    // we trigger one last time the plotter to go back home
+    svg::save("files/increment.svg", &doc).unwrap();
+  }
+}
+
+fn plot_read_previous_plot_data() -> Option<Attributes> {
+  // read previous plot data from "increment.finished.svg"
+  let mut svg_str = String::new();
+  svg::open("files/increment.finished.svg", &mut svg_str)
+    .ok()
+    .and_then(|doc| {
+      for event in doc {
+        match event {
+          svg::parser::Event::Tag("plotdata", Type::Start, attributes) => {
+            // delete file
+            std::fs::remove_file("files/increment.finished.svg").unwrap();
+            return Some(attributes);
+          }
+          _ => {}
+        }
+      }
+      None
+    })
 }
 
 fn generate_svg_all<T: LivedrawArt + Clone>(
@@ -240,7 +329,7 @@ fn generate_svg_all<T: LivedrawArt + Clone>(
         i += 1;
         continue;
       }
-      ArtIncrement::SVG(parts) => {
+      ArtIncrement::SVG(parts, _) => {
         for part in parts {
           doc = doc.add(part);
         }
