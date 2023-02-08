@@ -124,8 +124,6 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
 
   let (width, height) = art.get_dimension();
 
-  let should_rotate_orientation = width < height;
-
   plot_update(PlotUpdateAction::PlotArtStart());
   let delay = art.delay_between_increments();
   let mut i: usize = 0;
@@ -193,22 +191,7 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
         );
         // add <plotdata> element to optimise pen travel and start from previous position
         if let Some(plotdata_attributes) = plot_read_previous_plot_data() {
-          let mut attributes = plotdata_attributes.clone();
-
-          // set layer to -1
-          attributes.insert("layer".to_string(), "-1".to_string().into());
-
-          // set pause_dist to 0
-          attributes.insert("pause_dist".to_string(), "0".to_string().into());
-
-          // set pause_ref to 0
-          attributes.insert("pause_ref".to_string(), "0".to_string().into());
-
-          let mut new_element = Element::new("plotdata");
-          for attr in attributes {
-            new_element.assign(attr.0, attr.1);
-          }
-          doc = doc.add(new_element);
+          doc = doc.add(plot_make_new_plotdata(plotdata_attributes));
         }
 
         plot_update(PlotUpdateAction::PlotIncrStart(i));
@@ -257,16 +240,27 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
 }
 
 fn plot_cleanup(width: f64, height: f64) {
+  // we trigger one last time the plotter to go back home
   if let Some(attrs) = plot_read_previous_plot_data() {
     let mut doc = svg_document(width, height);
-    let mut new_element = Element::new("plotdata");
-    for attr in attrs {
-      new_element.assign(attr.0, attr.1);
-    }
-    doc = doc.add(new_element);
-    // we trigger one last time the plotter to go back home
+    doc = doc.add(plot_make_new_plotdata(attrs));
     svg::save("files/increment.svg", &doc).unwrap();
   }
+}
+
+fn plot_make_new_plotdata(attributes: Attributes) -> Element {
+  let mut attributes = attributes.clone();
+
+  // we need to reset the plotdata to start from the beginning:
+  attributes.insert("layer".to_string(), "-1".to_string().into()); // plot all layers
+  attributes.insert("pause_dist".to_string(), "0".to_string().into()); // from zero
+  attributes.insert("pause_ref".to_string(), "0".to_string().into()); // from zero
+
+  let mut new_element = Element::new("plotdata");
+  for attr in attributes {
+    new_element.assign(attr.0, attr.1);
+  }
+  new_element
 }
 
 fn plot_read_previous_plot_data() -> Option<Attributes> {
