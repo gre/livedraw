@@ -6,19 +6,21 @@ import {
   ArtServer,
   ArtServerAction,
   Config,
+  GlobalConfig,
   InputContext,
   Module,
   RootState,
   State,
   StreamChatClient,
   StreamChatContext,
-  StreamPlatformClient,
 } from "./types";
 import KeyboardCurve from "./inputs/KeyboardCurve";
 import Poll from "./inputs/Poll";
 import XY from "./inputs/XY";
 import Range from "./inputs/Range";
 import CounterBtn from "./inputs/CounterBtn";
+import { getConfig, globalDirectory, onConfigChange } from "./globalConfig";
+import { globalStreamChatClient } from "./platforms";
 
 const modules: { [_: string]: Module<any, any, any> } = {
   KeyboardCurve,
@@ -28,18 +30,36 @@ const modules: { [_: string]: Module<any, any, any> } = {
   CounterBtn,
 };
 
-export default function (
-  app: Express,
-  { chatClient }: StreamPlatformClient,
-  artfolder: string
-) {
+const initialArtServer: ArtServer = {
+  started: false,
+  plotting: false,
+  startedTime: 0,
+  plottingTime: 0,
+  index: 0,
+  total: 100,
+  prediction: 0,
+  countdownPause: null,
+};
+const initialRootState: RootState = {
+  mode: "normal",
+};
+
+type ArtState = {
+  unsubscribe: () => void;
+  getState: () => State;
+  globalContext: (id: string) => InputContext<any>;
+  setState: (s: State) => void;
+  onStateChange: (f: (_: State) => void) => void;
+  mods: { [_: string]: Module<any, any, any> };
+  getFolder: () => string;
+};
+
+function loadForArtFolder(artfolder: string): ArtState {
   let configpath = path.join(artfolder, "config.json5");
   if (!fs.existsSync(configpath)) {
     configpath = path.join(artfolder, "config.json");
   }
   let config: Config = JSON5.parse(fs.readFileSync(configpath, "utf8"));
-
-  const updateFrequency = 200;
 
   const mods: { [_: string]: Module<any, any, any> } = {};
   for (const id in config.inputs) {
@@ -51,27 +71,6 @@ export default function (
     }
   }
 
-  // Initialize state
-  // State contains:
-  // all the input states
-  // as well as config (from art config file)
-  // artServer data (from art server to know plotting status)
-
-  const initialArtServer: ArtServer = {
-    started: false,
-    plotting: false,
-    startedTime: 0,
-    plottingTime: 0,
-    index: 0,
-    total: 100,
-    prediction: 0,
-    countdownPause: null,
-  };
-
-  const initialRootState: RootState = {
-    mode: "normal",
-  };
-
   let state: State = {
     config,
     rootState: initialRootState,
@@ -81,18 +80,9 @@ export default function (
     state[id] = mods[id].initialComponentState(globalContext(id));
   }
 
-  const htmlListeners: Array<() => void> = [];
-  let htmlFileDebounceT: ReturnType<typeof setTimeout> | null;
-  fs.watch(path.join(__dirname, "../static/index.html"), (e, filename) => {
-    if (filename) {
-      if (htmlFileDebounceT) clearTimeout(htmlFileDebounceT);
-      htmlFileDebounceT = setTimeout(() => {
-        htmlListeners.forEach((f) => f());
-      }, 500);
-    }
-  });
+  const stateChangeListeners: Array<(_: State) => void> = [];
 
-  fs.watch(configpath, (e, filename) => {
+  const watcher = fs.watch(configpath, (e, filename) => {
     if (filename) {
       const prevConfig = config;
       try {
@@ -116,10 +106,104 @@ export default function (
           }
         }
         state.config = config;
+        stateChangeListeners.forEach((cb) => cb(state));
       } catch (e) {
         config = prevConfig;
         console.error("Couldn't update the config", e);
       }
+    }
+  });
+
+  function globalContext(id: string): InputContext<any> {
+    const c = config.inputs[id];
+    const { rootState } = state;
+    const currentSpeed =
+      rootState.mode === "berserk" ? config.berserkBoost || 10 : 1;
+    return {
+      id,
+      currentSpeed,
+      config: c,
+      rootState,
+    };
+  }
+
+  return {
+    unsubscribe: () => {
+      watcher.close();
+    },
+    globalContext,
+    getState: () => state,
+    setState: (newState: State) => {
+      state = newState;
+      stateChangeListeners.forEach((cb) => cb(state));
+    },
+    onStateChange: (cb: (state: State) => void) => {
+      stateChangeListeners.push(cb);
+    },
+
+    mods,
+    getFolder: () => artfolder,
+  };
+}
+
+const dummyConfig: Config = {
+  title: "",
+  inputs: {},
+  layout: [],
+};
+const dummyState: ArtState = {
+  unsubscribe: () => {},
+  globalContext: (id) => ({
+    id,
+    currentSpeed: 1,
+    config: dummyConfig,
+    rootState: initialRootState,
+  }),
+  getState: () => ({
+    config: dummyConfig,
+    rootState: initialRootState,
+    artServer: initialArtServer,
+  }),
+  setState: () => {},
+  onStateChange: () => {},
+  mods: {},
+  getFolder: () => "",
+};
+
+export default function (app: Express) {
+  const chatClient = globalStreamChatClient();
+
+  let globalConfig = getConfig();
+  let art = dummyState;
+  loadConfig(globalConfig);
+  onConfigChange(loadConfig);
+
+  // TODO stream platform client is dynamic too based on config
+
+  function loadConfig(newConfig: GlobalConfig) {
+    const artfolderChanged = globalConfig.artfolder !== newConfig.artfolder;
+    globalConfig = newConfig;
+
+    if (artfolderChanged) {
+      art.unsubscribe();
+    }
+    if (globalConfig.artfolder && fs.existsSync(globalConfig.artfolder)) {
+      art = loadForArtFolder(globalConfig.artfolder);
+    } else {
+      art = dummyState;
+    }
+  }
+
+  const updateFrequency = 200;
+
+  const htmlListeners: Array<() => void> = [];
+  let htmlFileDebounceT: ReturnType<typeof setTimeout> | null;
+  fs.watch(path.join(__dirname, "../static/index.html"), (e, filename) => {
+    if (filename) {
+      if (htmlFileDebounceT) clearTimeout(htmlFileDebounceT);
+      htmlFileDebounceT = setTimeout(() => {
+        htmlListeners.forEach((f) => f());
+      }, 500);
     }
   });
 
@@ -149,8 +233,10 @@ export default function (
           .map((id) => mods[id].doc)
           .forEach((txt, i) => setTimeout(() => chatClient.say(txt), i * 1000));
         */
-        for (const id in mods) {
-          restState[id] = mods[id].initialComponentState(globalContext(id));
+        for (const id in art.mods) {
+          restState[id] = art.mods[id].initialComponentState(
+            art.globalContext(id)
+          );
         }
         return { ...restState, artServer };
       }
@@ -159,8 +245,10 @@ export default function (
         artServer.started = false;
         artServer.index = artServer.total;
         chatClient.say("The plot is finished <3");
-        for (const id in mods) {
-          restState[id] = mods[id].initialComponentState(globalContext(id));
+        for (const id in art.mods) {
+          restState[id] = art.mods[id].initialComponentState(
+            art.globalContext(id)
+          );
         }
         return { ...restState, artServer };
       }
@@ -198,7 +286,7 @@ export default function (
     }
   }
 
-  let lastStateNotified = state;
+  let lastStateNotified = art.getState();
   const stateListeners: Array<(_: Partial<State>) => void> = [];
   function notify(s: Partial<State>) {
     stateListeners.forEach((f) => f(s));
@@ -206,6 +294,7 @@ export default function (
   function checkNotify() {
     let hasChanged = false;
     const subset: Partial<State> = {};
+    const state = art.getState();
     for (const k in state) {
       if (state[k] !== lastStateNotified[k]) {
         hasChanged = true;
@@ -221,19 +310,20 @@ export default function (
   // Recurrent update on the state
   let t = Date.now();
   setInterval(() => {
+    const state = art.getState();
     const mode = state.rootState.mode;
     if (mode === "frozen") return;
     const n = Date.now();
     const dt = n - t;
     let newState: State = { ...state };
     for (const id in state) {
-      if (id in mods) {
-        const newS = mods[id].update(
+      if (id in art.mods) {
+        const newS = art.mods[id].update(
           state[id],
           {
             dt,
           },
-          globalContext(id)
+          art.globalContext(id)
         );
         if (newS !== state[id]) {
           newState[id] = newS;
@@ -242,14 +332,17 @@ export default function (
         newState[id] = state[id];
       }
     }
-    state = newState;
+    art.setState(newState);
     checkNotify();
     t = n;
   }, updateFrequency);
 
+  // TODO berserk should be its own module
+
   let berserkOutTimer;
 
   function berserkOut() {
+    const state = art.getState();
     if (state.rootState.mode !== "berserk") {
       return;
     }
@@ -258,7 +351,7 @@ export default function (
       ...newState.rootState,
       mode: "normal",
     };
-    state = newState;
+    art.setState(newState);
   }
 
   // Listen to the chat
@@ -314,27 +407,29 @@ export default function (
       }
     }
 
-    for (const id in mods) {
+    for (const id in art.mods) {
       if (
         context.isAdmin &&
         (msg.startsWith("!reset " + id + " ") ||
           msg === "!reset" + id ||
           msg === "!reset")
       ) {
-        newState[id] = mods[id].initialComponentState(globalContext(id));
+        newState[id] = art.mods[id].initialComponentState(
+          art.globalContext(id)
+        );
       } else if (context.isAdmin && msg === "!flush") {
-        newState[id] = mods[id].flush(state[id], globalContext(id));
+        newState[id] = art.mods[id].flush(state[id], art.globalContext(id));
       } else if (
         msg === "!help " + id ||
-        (msg === "!" + id && !mods[id].noArguments)
+        (msg === "!" + id && !art.mods[id].noArguments)
       ) {
-        chatClient.say(mods[id].doc(globalContext(id)));
+        chatClient.say(art.mods[id].doc(art.globalContext(id)));
       } else {
-        newState[id] = mods[id].updateWithChatMessage(
+        newState[id] = art.mods[id].updateWithChatMessage(
           state[id],
           msg,
           context,
-          globalContext(id)
+          art.globalContext(id)
         );
       }
     }
@@ -345,27 +440,14 @@ export default function (
   }
 
   chatClient.listen((msg, context) => {
-    state = updateWithChatMessage(state, msg, context);
+    art.setState(updateWithChatMessage(art.getState(), msg, context));
   });
-
-  function globalContext(id: string): InputContext<any> {
-    const c = config.inputs[id];
-    const { rootState } = state;
-    const currentSpeed =
-      rootState.mode === "berserk" ? config.berserkBoost || 10 : 1;
-    return {
-      id,
-      currentSpeed,
-      config: c,
-      rootState,
-    };
-  }
 
   function mapState(state: Partial<State>) {
     let payload: { [id: string]: unknown } = {};
     for (const id in state) {
-      payload[id] = mods[id]
-        ? mods[id].mapToValue(state[id], globalContext(id))
+      payload[id] = art.mods[id]
+        ? art.mods[id].mapToValue(state[id], art.globalContext(id))
         : state[id];
     }
     return payload;
@@ -373,10 +455,10 @@ export default function (
 
   // Serve the state
   app.get("/state", (req, res) => {
-    res.send(mapState(state));
+    res.send(mapState(art.getState()));
   });
   app.get("/state/inputs", (req, res) => {
-    const { artServer, ...inputs } = state;
+    const { artServer, ...inputs } = art.getState();
     res.send(mapState(inputs));
   });
 
@@ -394,17 +476,13 @@ export default function (
       state = { ...state, artServer: initialArtServer };
     }, duration);
     */
-    state = artServerAction(state, body);
+    art.setState(artServerAction(art.getState(), body));
     res.send();
   });
 
   // Serve the predictive file
   app.get("/predictive.svg", (req, res) => {
-    const filePath = path.join(
-      process.cwd(),
-      artfolder,
-      "/files/predictive.svg"
-    );
+    const filePath = path.join(globalDirectory, "/files/predictive.svg");
     res.type("svg");
     res.sendFile(filePath, (err) => {
       if (err) {
@@ -418,7 +496,7 @@ export default function (
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("connection", "keep-alive");
-    res.write(`data: ${JSON.stringify(mapState(state))}\n\n`);
+    res.write(`data: ${JSON.stringify(mapState(art.getState()))}\n\n`);
     function listen(updatedState: Partial<State>) {
       res.write(`data: ${JSON.stringify(mapState(updatedState))}\n\n`);
     }
@@ -496,7 +574,7 @@ export default function (
     req.on("close", end);
   });
 
-  manageGiveway(chatClient, () => config);
+  manageGiveway(chatClient, () => art.getState().config);
 
   // GO!
   // chatClient.say("livedraw-server: state started!");

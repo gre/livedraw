@@ -9,8 +9,8 @@ export type Config = {
   title: string;
   giveawayMessage?: string;
   layout: Layout[];
-  predictive: string;
-  berserkBoost: number;
+  predictive?: string;
+  berserkBoost?: number;
   inputs: {
     [_: string]: InputConfig;
   };
@@ -36,6 +36,7 @@ export type ArtServer = {
 };
 
 export type State = {
+  config: Config;
   artServer: ArtServer;
   rootState: RootState;
   [_: string]: Object;
@@ -104,6 +105,7 @@ export type StreamChatClient = {
 
 export type StreamPlatformClient = {
   chatClient: StreamChatClient;
+  disconnect: () => void;
 };
 
 export type StreamPlatform = (_: StreamPlatformInput) => StreamPlatformClient;
@@ -140,3 +142,8 @@ export type ArtServerAction =
   | {
       type: "predictive";
     };
+
+export type GlobalConfig = {
+  artfolder?: string;
+  platform?: string;
+};

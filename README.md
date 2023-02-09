@@ -41,32 +41,38 @@ in the art project, a files/ folder is created with 3 .SVG files: all.svg aggreg
 
 ### How to run
 
-- clone art-example into your own. Let's assume it have path `$ART`
-- start the livedraw-server:
+- start the livedraw-server. It is the main server of live draw.
 
 ```sh
 cd livedraw-server
-# twitch envs are required: (you need to create a twitch user for making a nex bot and then get a oauth token with it. then set the channel of your twitch)
-export BOT_USERNAME=
-export CHANNEL_NAME=
-export OAUTH_TOKEN=
 yarn
-node ./dist/index.js $ART
+node ./dist/index.js
 ```
 
-- start the livedraw-axidraw-watch loop:
+- start the livedraw-axidraw-watch loop. That's the loop that will watch the files being plotted and will send the commands to the plotter.
 
 ```sh
 cd livedraw-axidraw-watch
-python3 ./axidraw-watch.py $ART/art.svg
+python3 ./axidraw-watch.py
 ```
 
-- start your art at the end:
+- you need to modify the `~/.livedraw/config.json5` file to point to the right art project.
+
+- start your art project at the end. It will start the art live experiment.
 
 ```sh
-cd art-example
+cd art-rust-template # example
 cargo run
 ```
+
+
+## `~/.livedraw` folder
+
+Livedraw creates a folder `~/.livedraw` which contains:
+- `config.json5`: the main configuration folder that gets modified from the admin interface.
+- axidraw_options.py global settings to use for the plotter
+- `files/` is a dynamically generated folder that will be used by the livedraw-server and the livedraw-axidraw-watch to listen to the files that are being plotted.
+
 
 ### Modules
 

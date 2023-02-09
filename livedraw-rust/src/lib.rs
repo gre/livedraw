@@ -2,6 +2,7 @@ use isahc::prelude::*;
 use serde_json::{json, Value};
 use std::{
   fmt::Debug,
+  path::PathBuf,
   thread::sleep,
   time::{Duration, Instant},
 };
@@ -88,7 +89,7 @@ pub fn livedraw_start_simulation<
 >(
   art: &mut T,
 ) {
-  std::fs::create_dir_all("files").unwrap();
+  std::fs::create_dir_all(files_folder().join("files")).unwrap();
   let (width, height) = art.get_dimension();
   let mut doc = svg_document(width, height);
   let mut i = 0usize;
@@ -110,17 +111,23 @@ pub fn livedraw_start_simulation<
       }
     }
   }
-  svg::save("files/all.svg", &doc).unwrap();
+  let file = files_folder().join("all.svg");
+  svg::save(file, &doc).unwrap();
 }
 
 pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
   let predictive_svg_freq = Duration::from_millis(500);
+  let folder = files_folder();
+  let increment_path = folder.join("increment.svg");
+  let increment_finished_path = folder.join("increment.finished.svg");
+  let predictive_path = folder.join("predictive.svg");
+  let all_path = folder.join("all.svg");
 
-  std::fs::remove_file("files/increment.svg").unwrap_or(());
-  std::fs::remove_file("files/increment.finished.svg").unwrap_or(());
-  std::fs::remove_file("files/predictive.svg").unwrap_or(());
-  std::fs::remove_file("files/all.svg").unwrap_or(());
-  std::fs::create_dir_all("files").unwrap();
+  std::fs::remove_file(increment_path.clone()).unwrap_or(());
+  std::fs::remove_file(increment_finished_path.clone()).unwrap_or(());
+  std::fs::remove_file(predictive_path.clone()).unwrap_or(());
+  std::fs::remove_file(all_path.clone()).unwrap_or(());
+  std::fs::create_dir_all(folder).unwrap();
 
   let (width, height) = art.get_dimension();
 
@@ -195,12 +202,12 @@ pub fn livedraw_start<T: LivedrawArt + Clone>(art: &mut T) {
         }
 
         plot_update(PlotUpdateAction::PlotIncrStart(i));
-        svg::save("files/increment.svg", &doc).unwrap();
-        svg::save("files/all.svg", &all_doc).unwrap();
+        svg::save(increment_path.clone(), &doc).unwrap();
+        svg::save(all_path.clone(), &all_doc).unwrap();
 
         // wait for file to be deleted (plot to end)
         loop {
-          let exists = std::path::Path::new("files/increment.svg").is_file();
+          let exists = increment_path.as_path().is_file();
           if !exists {
             plot_update(PlotUpdateAction::PlotIncrEnd(i));
             break;
@@ -244,7 +251,8 @@ fn plot_cleanup(width: f64, height: f64) {
   if let Some(attrs) = plot_read_previous_plot_data() {
     let mut doc = svg_document(width, height);
     doc = doc.add(plot_make_new_plotdata(attrs));
-    svg::save("files/increment.svg", &doc).unwrap();
+    let file = files_folder().join("increment.svg");
+    svg::save(file, &doc).unwrap();
   }
 }
 
@@ -266,21 +274,20 @@ fn plot_make_new_plotdata(attributes: Attributes) -> Element {
 fn plot_read_previous_plot_data() -> Option<Attributes> {
   // read previous plot data from "increment.finished.svg"
   let mut svg_str = String::new();
-  svg::open("files/increment.finished.svg", &mut svg_str)
-    .ok()
-    .and_then(|doc| {
-      for event in doc {
-        match event {
-          svg::parser::Event::Tag("plotdata", _, attributes) => {
-            // delete file
-            std::fs::remove_file("files/increment.finished.svg").unwrap();
-            return Some(attributes);
-          }
-          _ => {}
+  let file = files_folder().join("increment.finished.svg");
+  svg::open(file.clone(), &mut svg_str).ok().and_then(|doc| {
+    for event in doc {
+      match event {
+        svg::parser::Event::Tag("plotdata", _, attributes) => {
+          // delete file
+          std::fs::remove_file(file).unwrap();
+          return Some(attributes);
         }
+        _ => {}
       }
-      None
-    })
+    }
+    None
+  })
 }
 
 fn generate_svg_all<T: LivedrawArt + Clone>(
@@ -320,7 +327,8 @@ fn generate_svg_all<T: LivedrawArt + Clone>(
 fn generate_predictive<T: LivedrawArt + Clone>(art: &T, input: &Value) {
   let predictive_doc =
     generate_svg_all(art, input, art.get_predictive_max_next_increments());
-  svg::save("files/predictive.svg", &predictive_doc).unwrap();
+  let file = files_folder().join("predictive.svg");
+  svg::save(file, &predictive_doc).unwrap();
   plot_update(PlotUpdateAction::PlotPredictiveWritten());
 }
 
@@ -412,6 +420,14 @@ fn plot_update(action: PlotUpdateAction) {
       .send()
   })
   .unwrap();
+}
+
+fn files_folder() -> PathBuf {
+  // ~/.livedraw/files
+  let mut path = dirs::home_dir().unwrap();
+  path.push(".livedraw");
+  path.push("files");
+  path
 }
 
 pub fn render_route(data: Data, route: &Vec<(f64, f64)>) -> Data {

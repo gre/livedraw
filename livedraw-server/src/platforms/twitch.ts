@@ -23,7 +23,7 @@ function chat() {
 const platform: StreamPlatform = ({ onConnectedHandler }) => {
   const client = chat();
   client.on("connected", (addr: string, port: number) => {
-    console.log(`* Connected to ${addr}:${port}`);
+    console.log(`Twitch connected to ${addr}:${port}`);
     onConnectedHandler();
   });
 
@@ -50,6 +50,7 @@ const platform: StreamPlatform = ({ onConnectedHandler }) => {
 
   return {
     chatClient,
+    disconnect: () => client.disconnect(),
   };
 };
 

@@ -8,10 +8,19 @@ import sys
 # we will watch for increment.svg to be created, and then plot it, delete it, and repeat
 
 def main(folder):
-  directory_name = os.path.abspath(folder) 
-  if not os.path.isdir(directory_name):
-    raise Exception("Not a folder: " + directory_name)
+  directory_name = os.path.abspath(folder)
 
+  config = os.path.join(directory_name, "axidraw_options.py")
+  if not os.path.isfile(config):
+    # bootstrap template file
+    with open(config, "w") as f:
+      f.write("""
+def set_defaults(ad):
+    ad.options.pen_pos_up = 50
+    ad.options.pen_pos_down = 30
+    ad.options.speed_pendown = 10
+    print("loaded axidraw specifics.")
+""")
   # source the config
   sys.path.append(directory_name)
   print("sourcing axidraw_options in", directory_name)
@@ -57,5 +66,5 @@ def main(folder):
 
 
 if __name__ == '__main__':
-  filepath = sys.argv[1]
+  filepath = os.path.expanduser('~/.livedraw')
   main(filepath)
