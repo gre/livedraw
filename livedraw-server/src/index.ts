@@ -6,7 +6,7 @@ import { adminServer } from "./globalConfig";
 
 const port = parseInt(process.env.PORT || "4628", 10);
 const app = express();
-app.use(morgan("tiny"));
+// app.use(morgan("tiny"));
 app.use(express.static("static"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());

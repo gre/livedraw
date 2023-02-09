@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>livedraw</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=VT323&display=swap");
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+        font-family: "VT323", monospace;
+        font-size: 24px;
+        color: var(--color-main);
+      }
+      code {
+        font-family: "VT323", monospace;
+      }
+      #main {
+      }
+    </style>
+  </head>
+  <body>
+    <div id="main"></div>
+    <script src="https://unpkg.com/react/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lodash@4.17.21/lodash.min.js"></script>
+    <script type="text/babel">
+      const { useState, useCallback, useContext, useEffect, useMemo, useRef } =
+        React;
+
+      const MIDIContext = React.createContext(null);
+
+      const COMMAND_NOTE_OFF = 8;
+      const COMMAND_NOTE_ON = 9;
+      const COMMAND_CONTROL = 11;
+
+      const MIDIAccess = ({ children }) => {
+        const [midi, setMIDI] = useState(null);
+
+        useEffect(() => {
+          let unmounted;
+          navigator.requestMIDIAccess().then((access) => {
+            if (unmounted) return;
+
+            const controlListeners = [];
+            const noteListeners = [];
+
+            const controlValues = Array(256).fill(0);
+            const noteOffResolve = {};
+
+            function callListeners(all, ...rest) {
+              all.forEach((f) => f(...rest));
+            }
+
+            for (const input of access.inputs.values()) {
+              input.onmidimessage = (message) => {
+                const command = message.data[0] >> 4;
+                const channel = message.data[0] & 0xf;
+                const note = message.data[1];
+                const velocity = message.data[2] / 127;
+                if (command === COMMAND_CONTROL) {
+                  const value = velocity;
+                  controlValues[note] = value;
+                  callListeners(controlListeners, value, note, channel);
+                } else if (command === COMMAND_NOTE_ON) {
+                  const noteOffPromise = new Promise((resolve) => {
+                    noteOffResolve[note] = resolve;
+                  });
+                  callListeners(noteListeners, note, velocity, noteOffPromise);
+                } else if (command === COMMAND_NOTE_OFF) {
+                  if (note in noteOffResolve) {
+                    noteOffResolve[note]();
+                    delete noteOffResolve[note];
+                  }
+                }
+              };
+            }
+
+            const getControlValue = (id) => controlValues[id];
+
+            const getControlValues = () => controlValues;
+
+            const makeListener = (all) => {
+              return (f) => {
+                all.push(f);
+                return () => {
+                  const i = all.indexOf(f);
+                  if (i !== -1) {
+                    all.splice(i, 1);
+                  }
+                };
+              };
+            };
+
+            const listenControl = makeListener(controlListeners);
+            const listenNote = makeListener(noteListeners);
+
+            setMIDI({
+              getControlValue,
+              getControlValues,
+              listenControl,
+              listenNote,
+            });
+
+            // TODO could smartly detect new devices... for now we just take one at mount.
+            /*
+        access.onstatechange = e => {
+          if (unmounted) return;
+          console.log(e.port.name, e.port.manufacturer, e.port.state);
+        };
+      */
+          });
+          return () => {
+            unmounted = true;
+          };
+        }, []);
+
+        return (
+          <MIDIContext.Provider value={midi}>{children}</MIDIContext.Provider>
+        );
+      };
+
+      const useMIDINoteEffect = (cb) => {
+        const midi = useContext(MIDIContext);
+        useEffect(() => {
+          if (!midi) return;
+          return midi.listenNote(cb);
+        }, [midi]);
+      };
+
+      const useMIDIControlEffect = (cb, deps) => {
+        const midi = useContext(MIDIContext);
+        useEffect(() => {
+          if (!midi) return;
+          return midi.listenControl(cb);
+        }, [midi, ...deps]);
+      };
+
+      function useThrottle(cb, delay) {
+        const options = { leading: true, trailing: false }; // add custom lodash options
+        const cbRef = useRef(cb);
+        // use mutable ref to make useCallback/throttle not depend on `cb` dep
+        useEffect(() => {
+          cbRef.current = cb;
+        });
+        return useCallback(
+          _.throttle((...args) => cbRef.current(...args), delay, options),
+          [delay]
+        );
+      }
+
+      // BERSERK BUTTON [1mn] [2mn] [5mn]
+      // inputs
+      // - name
+      // - midi key bounded to it (locally to the page)
+
+      /*
+        app.post("/stream/state/input/:id", (req, res) => {
+      */
+
+      function InputAdmin({ id, inputConfig, value }) {
+        const [forceValue, setForceValue] = useState(false);
+        const [bindingMode, setBindingMode] = useState(false);
+        const [midiId, setMidiId] = useState(null);
+        const debouncedUpdateValue = useThrottle((v) => {
+          fetch(`/stream/state/input/${id}`, {
+            method: "POST",
+            body: JSON.stringify(v),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        }, 50);
+        useMIDIControlEffect(
+          (value, eventId) => {
+            if (bindingMode) {
+              setMidiId(eventId);
+              setBindingMode(false);
+            }
+            if (midiId === eventId) {
+              if (inputConfig.type === "Range") {
+                const v =
+                  value * (inputConfig.max - inputConfig.min) + inputConfig.min;
+                const newState = !forceValue
+                  ? { target: v }
+                  : { target: v, value: v };
+                debouncedUpdateValue(newState);
+              }
+            }
+          },
+          [bindingMode, midiId, debouncedUpdateValue, forceValue]
+        );
+        return (
+          <li>
+            <strong>{id}</strong>
+            <button disabled={bindingMode} onClick={() => setBindingMode(true)}>
+              {midiId !== null ? `bonded(${midiId})` : "bind"}
+            </button>
+            <input
+              type="checkbox"
+              checked={forceValue}
+              onClick={() => setForceValue(!forceValue)}
+            />
+          </li>
+        );
+      }
+
+      function Inputs({ state }) {
+        return (
+          <ul>
+            {Object.keys(state.config.inputs).map((key) => (
+              <InputAdmin
+                key={key}
+                id={key}
+                inputConfig={state.config.inputs[key]}
+                value={state[key]}
+              />
+            ))}
+          </ul>
+        );
+      }
+
+      function Render({ state }) {
+        return <Inputs state={state} />;
+      }
+
+      const Root = () => {
+        const [state, setState] = useState(null);
+
+        useEffect(() => {
+          function reconnectLoop() {
+            const source = new EventSource("/stream/state");
+            source.onmessage = (e) => {
+              console.log(e.data);
+              setState((prev) => ({ ...prev, ...JSON.parse(e.data) }));
+            };
+            source.onerror = (e) => {
+              console.log("DISCONNECT");
+              setTimeout(reconnectLoop, 1000);
+              source.close();
+            };
+          }
+          reconnectLoop();
+        }, []);
+
+        if (!state) return null;
+
+        return (
+          <MIDIAccess>
+            <Render state={state} />{" "}
+          </MIDIAccess>
+        );
+      };
+
+      ReactDOM.createRoot(document.getElementById("main")).render(<Root />);
+    </script>
+  </body>
+</html>

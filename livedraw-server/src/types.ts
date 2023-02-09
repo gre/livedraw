@@ -51,7 +51,11 @@ export type InputContext<Config extends InputConfig> = {
   config: Config;
 };
 
-export type Module<Config extends InputConfig, ComponentState, Value> = {
+export type Module<
+  Config extends InputConfig,
+  ComponentState extends Record<any, any>,
+  Value
+> = {
   // document in one line the usage of an input
   doc: (_: InputContext<Config>) => string;
 

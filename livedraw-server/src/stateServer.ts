@@ -491,6 +491,21 @@ export default function (app: Express) {
     });
   });
 
+  app.post("/stream/state/input/:id", (req, res) => {
+    const { id } = req.params;
+    const { body } = req;
+    if (art.mods[id]) {
+      const state = art.getState();
+      art.setState({
+        ...state,
+        [id]: { ...state[id], ...body },
+      });
+      res.send(200);
+    } else {
+      res.send(404);
+    }
+  });
+
   app.get("/stream/state", (req, res) => {
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/event-stream");
