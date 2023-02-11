@@ -589,6 +589,14 @@ export default function (app: Express) {
     req.on("close", end);
   });
 
+  chatClient.listen((msg, context) => {
+    if (context.isAdmin) {
+      if (msg === "!ping") {
+        chatClient.say("pong");
+      }
+    }
+  });
+
   manageGiveway(chatClient, () => art.getState().config);
 
   // GO!
