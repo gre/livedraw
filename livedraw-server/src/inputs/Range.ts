@@ -10,7 +10,9 @@ type RangeConfig = InputConfig & {
 
 const rangeAlias: { [_: string]: string } = {
   max: "100%",
+  right: "100%",
   min: "0%",
+  left: "0%",
   high: "100%",
   low: "0%",
   mid: "50%",

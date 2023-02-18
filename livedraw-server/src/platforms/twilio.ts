@@ -23,6 +23,7 @@ const platform: StreamPlatform = ({ onConnectedHandler }) => {
     if (!user) return;
     let displayName: string = user?.username || author;
     if (!displayName) return;
+    if (!body) return;
     const isBroadcaster = streamerId === author;
     const context = {
       username: author,

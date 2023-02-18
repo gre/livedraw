@@ -231,7 +231,6 @@
       }
 
       .layout-input {
-        align-self: center;
         margin: 8px 16px;
       }
 
@@ -1000,6 +999,16 @@
         }
       }
 
+      function existsInLayout(layout, id) {
+        for (let i = 0; i < layout.length; i++) {
+          if (layout[i] === id) return true;
+          if (Array.isArray(layout[i])) {
+            if (existsInLayout(layout[i], id)) return true;
+          }
+        }
+        return false;
+      }
+
       const Styles = ({ config }) => {
         const style = { ...config.style };
         const dustColor = style.dustColor || "#68c0ff";
@@ -1096,6 +1105,7 @@
             <div id="instructions">
               <div className="content">
                 {Object.keys(config.inputs)
+                  .filter((k) => existsInLayout(config.layout, k))
                   .map((k) =>
                     (commandValueExample(config.inputs[k], k) + "   ").padEnd(
                       20,
