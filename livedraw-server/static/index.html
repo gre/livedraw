@@ -194,6 +194,10 @@
         filter: invert(76%) sepia(23%) saturate(658%) hue-rotate(185deg)
           brightness(100%) contrast(102%);
       }
+      #predictive.debug-preview {
+        opacity: 1;
+        background: white;
+      }
       @keyframes predictive {
         0%,
         100% {
@@ -505,7 +509,7 @@
     <script type="text/babel">
       const { useState, useEffect, useMemo, useRef } = React;
 
-      function CurveImpl({ value, width, height, config }) {
+      function CurveLinearImpl({ value, width, height, config }) {
         const pad = 10;
         const stepx = width / value.length;
         const yamp = height - 2 * pad;
@@ -551,9 +555,9 @@
         );
       }
 
-      const Curve = React.memo(CurveImpl);
+      const CurveLinear = React.memo(CurveLinearImpl);
 
-      const Alphabet = React.memo(function AlphabetImpl({
+      const AlphabetLinear = React.memo(function AlphabetLinearImpl({
         width,
         value,
         config,
@@ -578,22 +582,142 @@
         );
       });
 
-      function KeyboardCurve({ value, config }) {
+      function KeyboardCurveLinear({ value, config }) {
         const width = 400;
         const height = 100;
         const curveheight = 80;
         return (
           <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
-            <Curve
+            <CurveLinear
               value={value}
               width={width}
               height={curveheight}
               config={config}
             />
             <g transform="translate(0,80)">
-              <Alphabet width={width} value={value} config={config} />
+              <AlphabetLinear width={width} value={value} config={config} />
             </g>
           </svg>
+        );
+      }
+
+      function useProjectPolar(size, width, height) {
+        return useMemo(() => {
+          const rad = (0.9 * Math.min(width, height)) / 2;
+          return (index, v) => {
+            const angle = (index / size) * 2 * Math.PI;
+            let r = 0.1 + 0.9 * v;
+            const x = width / 2 + Math.cos(angle) * r * rad;
+            const y = height / 2 + Math.sin(angle) * r * rad;
+            return [x.toFixed(2), y.toFixed(2)];
+          };
+        }, [size, width, height]);
+      }
+
+      function circ(array) {
+        return array.concat([array[0].replace("M", "L")]);
+      }
+
+      function CurvePolarStaticImpl({
+        valueLength,
+        res,
+        letters,
+        projectPolar,
+      }) {
+        let arr = Array(valueLength).fill(0);
+        const halfD = circ(
+          arr.map((_v, i) => (i === 0 ? "M" : "L") + projectPolar(i + 0.5, 0.5))
+        ).join(" ");
+        const fullD = circ(
+          arr.map((_v, i) => (i === 0 ? "M" : "L") + projectPolar(i + 0.5, 1))
+        ).join(" ");
+        return (
+          <g>
+            <path
+              d={halfD}
+              fill="none"
+              strokeWidth={0.5}
+              strokeDasharray="0 4 0"
+            />
+            <path d={fullD} fill="none" strokeWidth={0.5} opacity={0.5} />
+            {letters.split("").map((l, i) => {
+              const pos = projectPolar(i * res, 1);
+              const posFar = projectPolar(i * res, 1.05);
+              return (
+                <g key={i}>
+                  <path
+                    d={`M${projectPolar(i, 0)} L${pos}`}
+                    fill="none"
+                    strokeWidth={0.3}
+                  />
+                  <text
+                    fontFamily="monospace"
+                    fontSize="28px"
+                    dominantBaseline="middle"
+                    textAnchor="middle"
+                    x={posFar[0]}
+                    y={posFar[1]}
+                    opacity={0.5}
+                  >
+                    {l}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        );
+      }
+
+      const CurvePolarStatic = React.memo(CurvePolarStaticImpl);
+
+      function CurvePolarImpl({ value, width, height, config }) {
+        const projectPolar = useProjectPolar(value.length, width, height);
+
+        const valueD = circ(
+          value.map((v, i) => (i === 0 ? "M" : "L") + projectPolar(i + 0.5, v))
+        ).join(" ");
+
+        return (
+          <g>
+            <path
+              d={valueD}
+              fill="none"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            <CurvePolarStatic
+              projectPolar={projectPolar}
+              res={config.resolution || 1}
+              letters={config.letters}
+              valueLength={value.length}
+            />
+          </g>
+        );
+      }
+      const CurvePolar = React.memo(CurvePolarImpl);
+
+      function KeyboardCurvePolar({ value, config }) {
+        const width = 400;
+        const height = 400;
+        return (
+          <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+            <CurvePolar
+              value={value}
+              width={width}
+              height={height}
+              config={config}
+            />
+          </svg>
+        );
+      }
+
+      function KeyboardCurve({ value, config }) {
+        return config.projection === "polar" ? (
+          <KeyboardCurvePolar value={value} config={config} />
+        ) : (
+          <KeyboardCurveLinear value={value} config={config} />
         );
       }
 
@@ -1030,6 +1154,26 @@
         );
       };
 
+      function useRefresh(ms) {
+        const [t, setT] = useState(0);
+        useEffect(() => {
+          const i = setInterval(() => setT((t) => t + 1), ms);
+          return () => clearInterval(i);
+        }, [ms]);
+        return t;
+      }
+
+      const DebugPreview = () => {
+        const t = useRefresh(1000);
+        return (
+          <img
+            className="debug-preview"
+            src={`/all.svg?t=${t}`}
+            id="predictive"
+          />
+        );
+      };
+
       const Render = ({ state }) => {
         const config = state.config;
         const { plotting, prediction, index, total, countdownPause } =
@@ -1061,11 +1205,15 @@
                   ]
                 : null}
 
-              <img
-                className={config.predictive}
-                src={`/predictive.svg?t=${prediction}`}
-                id="predictive"
-              />
+              {config.debug ? (
+                <DebugPreview />
+              ) : (
+                <img
+                  className={config.predictive}
+                  src={`/predictive.svg?t=${prediction}`}
+                  id="predictive"
+                />
+              )}
               {state.artServer.started ? (
                 <CamTimer relativeSince={state.artServer.startedTime} />
               ) : null}

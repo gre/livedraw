@@ -237,6 +237,40 @@
         return <Inputs state={state} />;
       }
 
+      function CameraControls({ bindings, id }) {
+        const debouncedUpdateValue = useThrottle((camId, id, value) => {
+          fetch(`/ipcamerapro/${camId}`, {
+            method: "POST",
+            body: JSON.stringify({ id, value }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        }, 50);
+
+        useMIDIControlEffect(
+          (value, eventId) => {
+            const binding = bindings.find((b) => b.control === eventId);
+            if (!binding) return;
+            const v = Math.round(value * 100);
+            debouncedUpdateValue(id, binding.id, v);
+          },
+          [bindings, id]
+        );
+        return null;
+      }
+
+      const mainCamera = (
+        <CameraControls
+          id="topcamera"
+          bindings={[
+            { control: 21, id: "ptz" },
+            { control: 22, id: "crop_x" },
+            { control: 23, id: "crop_y" },
+          ]}
+        />
+      );
+
       const Root = () => {
         const [state, setState] = useState(null);
 
@@ -260,7 +294,8 @@
 
         return (
           <MIDIAccess>
-            <Render state={state} />{" "}
+            <Render state={state} />
+            {mainCamera}
           </MIDIAccess>
         );
       };

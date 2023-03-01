@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Express } from "express";
+import axios from "axios";
 import JSON5 from "json5";
 import {
   ArtServer,
@@ -19,6 +20,7 @@ import Poll from "./inputs/Poll";
 import XY from "./inputs/XY";
 import Range from "./inputs/Range";
 import CounterBtn from "./inputs/CounterBtn";
+import LastChatMessage from "./inputs/LastChatMessage";
 import { getConfig, globalDirectory, onConfigChange } from "./globalConfig";
 import { globalStreamChatClient } from "./platforms";
 
@@ -28,6 +30,7 @@ const modules: { [_: string]: Module<any, any, any> } = {
   Range,
   XY,
   CounterBtn,
+  LastChatMessage,
 };
 
 const initialArtServer: ArtServer = {
@@ -491,6 +494,16 @@ export default function (app: Express) {
     });
   });
 
+  app.get("/all.svg", (req, res) => {
+    const filePath = path.join(globalDirectory, "/files/all.svg");
+    res.type("svg");
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        res.status(404).end();
+      }
+    });
+  });
+
   app.post("/stream/state/input/:id", (req, res) => {
     const { id } = req.params;
     const { body } = req;
@@ -527,6 +540,45 @@ export default function (app: Express) {
     stateListeners.push(listen);
     htmlListeners.push(end);
     req.on("close", end);
+  });
+
+  app.get("/globalconfig", (req, res) => {
+    res.send(globalConfig);
+  });
+
+  app.post("/ipcamerapro/:cam", (req, res) => {
+    // get id and path
+    const { cam } = req.params;
+    const conf = globalConfig.network && globalConfig.network[cam];
+    if (!conf) {
+      res.send(404);
+      return;
+    }
+    if (conf.type !== "ipcamerapro") {
+      res.send(500);
+      return;
+    }
+    const { id, value } = req.body;
+    let url = `http://${conf.ip}:8080/`;
+    switch (id) {
+      case "ptz":
+        url += id + "?zoom=" + value;
+        break;
+      case "crop_x":
+      case "crop_y":
+        url += "settings/" + id + "?set=" + value;
+        break;
+    }
+    console.log(url);
+    axios.get(url).then(
+      () => {
+        res.send(200);
+      },
+      (e) => {
+        console.log(e);
+        res.send(500);
+      }
+    );
   });
 
   type Message = {

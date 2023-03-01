@@ -11,6 +11,7 @@ type Envelope = {
 type AlphabeticCurveConfig = InputConfig & {
   letters: string;
   envelope: Envelope;
+  projection?: "polar" | "linear";
   spread?: number;
   saturateUp?: number;
   resolution?: number;
@@ -105,7 +106,8 @@ function calculateCache(
           cache,
           index,
           value * wordAmp(i),
-          r * spread * spreadFactor
+          r * spread * spreadFactor,
+          config.projection === "polar"
         )
       );
     }
@@ -185,10 +187,14 @@ function addGaussianAmplitude(
   arr: number[],
   index: number,
   value: number,
-  spread: number
+  spread: number,
+  isCircular: boolean
 ) {
   for (let i = 0; i <= arr.length; i++) {
-    const distance = Math.abs(index - i);
+    let distance = Math.abs(index - i);
+    if (isCircular) {
+      distance = Math.min(distance, arr.length - distance);
+    }
     const gaussian = Math.exp(-Math.pow(distance / spread, 2) / 2) * value;
     if (i >= 0 && i < arr.length && gaussian > 0.001) {
       arr[i] += gaussian;

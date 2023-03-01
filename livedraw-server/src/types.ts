@@ -150,4 +150,11 @@ export type ArtServerAction =
 export type GlobalConfig = {
   artfolder?: string;
   platform?: string;
+  network?: Record<
+    string,
+    {
+      type: string;
+      ip: string;
+    }
+  >;
 };

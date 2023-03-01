@@ -20,6 +20,7 @@ if (!fs.existsSync(configpath)) {
 {
   artfolder: "", // absolute path to art folder
   platform: "debug", // one of "debug", "twitch", "twilio"
+  networks: {}
 }
 `
   );
