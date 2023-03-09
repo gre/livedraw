@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>livedraw</title>
+    <style>
+      
+    </style>
+  </head>
+  <body>
+    <div id="main"></div>
+    <script src="https://unpkg.com/regl@2/dist/regl.js"></script>
+    <script src="https://unpkg.com/perspective-transform@1.1.3/dist/perspective-transform.min.js"></script>
+
+    <!--<img src="http://camdesk:8080/video" width="400"/> -->
+
+    <script>
+
+      const regl = createREGL();
+
+      let points = [
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 1.0],
+        [0.0, 1.0],
+      ];
+
+      let projection = [0,0,0,0,0,0,0,0,0];
+
+      const update = () => {
+        fetch("/ipcamerapro/topcamera/crop")
+          .then((response) => response.json())
+          .then((data) => {
+            points = data;
+            const srcPoints = points.flat();
+            const dstPoints = 
+            [
+              [0.0, 0.0],
+              [1.0, 0.0],
+              [1.0, 1.0],
+              [0.0, 1.0],
+            ].flat();
+            var perspT = PerspT(dstPoints, srcPoints);
+            projection = perspT.coeffs;
+          });
+      }
+      update()
+      setInterval(update, 5000);
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const inputTexture = regl.texture({
+          data: img,
+          mag: "linear",
+          min: "linear",
+        });
+
+        const draw = regl({
+          frag: `
+            precision mediump float;
+            uniform sampler2D inputTexture;
+            uniform mat3 projection;
+            varying vec2 uv;
+            void main() {
+              vec2 p = uv;
+              // it's not exactly used as a matrix but it's the same idea
+              p = vec2(
+                (projection[0][0]*p.x + projection[0][1]*p.y + projection[0][2]) / (projection[2][0]*p.x + projection[2][1]*p.y + 1.),
+                (projection[1][0]*p.x + projection[1][1]*p.y + projection[1][2]) / (projection[2][0]*p.x + projection[2][1]*p.y + 1.));  
+              gl_FragColor = texture2D(inputTexture, p);
+            }
+          `,
+          vert: `
+            precision mediump float;
+            attribute vec2 position;
+            varying vec2 uv;
+            void main() {
+              uv = position;
+              gl_Position = vec4(2.*position.x-1., 1.-2.*position.y, 0, 1);
+            }
+          `,
+          attributes: {
+            position: [
+              [-2, 0],
+              [0, -2],
+              [2, 2],
+            ],
+          },
+          uniforms: {
+            inputTexture: inputTexture,
+            projection: regl.prop("projection"),
+          },
+          count: 3,
+        });
+
+        regl.frame(() => {
+          inputTexture({ data: img });
+          draw({ projection, });
+        });
+      }
+      img.src = "http://camdesk:8080/video"
+    </script>
+  </body>
+</html>

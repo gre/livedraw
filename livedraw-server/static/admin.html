@@ -37,6 +37,9 @@
     <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lodash@4.17.21/lodash.min.js"></script>
+    <script src="https://unpkg.com/gl-react@5/gl-react.js"></script>
+    <script src="https://unpkg.com/gl-react-dom@5/gl-react-dom.js"></script>
+
     <script type="text/babel">
       const { useState, useCallback, useContext, useEffect, useMemo, useRef } =
         React;
@@ -204,7 +207,7 @@
           [bindingMode, midiId, debouncedUpdateValue, forceValue]
         );
         return (
-          <li>
+          <div style={{ padding: "0.5em", display: "inline-block" }}>
             <strong>{id}</strong>
             <button disabled={bindingMode} onClick={() => setBindingMode(true)}>
               {midiId !== null ? `bonded(${midiId})` : "bind"}
@@ -214,27 +217,48 @@
               checked={forceValue}
               onClick={() => setForceValue(!forceValue)}
             />
-          </li>
+          </div>
+        );
+      }
+
+      function MjpegImage({ src, width, height, onLoad }) {
+        const imgRef = useRef(null);
+        useEffect(() => {
+          return () => {
+            imgRef.current.src = "";
+          };
+        }, []);
+        return (
+          <img
+            ref={(img) => {
+              if (img) {
+                imgRef.current = img;
+              }
+            }}
+            src={src}
+            onLoad={onLoad}
+            width={width}
+            height={height}
+          />
         );
       }
 
       function Inputs({ state }) {
         return (
-          <ul>
-            {Object.keys(state.config.inputs).map((key) => (
-              <InputAdmin
-                key={key}
-                id={key}
-                inputConfig={state.config.inputs[key]}
-                value={state[key]}
-              />
-            ))}
-          </ul>
+          <div>
+            <h2>Inputs</h2>
+            <div>
+              {Object.keys(state.config.inputs).map((key) => (
+                <InputAdmin
+                  key={key}
+                  id={key}
+                  inputConfig={state.config.inputs[key]}
+                  value={state[key]}
+                />
+              ))}
+            </div>
+          </div>
         );
-      }
-
-      function Render({ state }) {
-        return <Inputs state={state} />;
       }
 
       function CameraControls({ bindings, id }) {
@@ -260,16 +284,276 @@
         return null;
       }
 
-      const mainCamera = (
-        <CameraControls
-          id="topcamera"
-          bindings={[
-            { control: 21, id: "ptz" },
-            { control: 22, id: "crop_x" },
-            { control: 23, id: "crop_y" },
-          ]}
-        />
-      );
+      const useFetch = (url) => {
+        const [response, setResponse] = useState(null);
+        const [error, setError] = useState(null);
+        const [loading, setLoading] = useState(true);
+        useEffect(() => {
+          const fetchData = async () => {
+            try {
+              const res = await fetch(url);
+              const json = await res.json();
+              setResponse(json);
+              setLoading(false);
+            } catch (error) {
+              setError(error);
+            }
+          };
+          fetchData();
+        }, [url]);
+        return { response, error, loading };
+      };
+
+      const initialCropPoints = [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+        ];
+
+      const Cropper = ({ camId, imgUrl, width }) => {
+        const [ratio, setRatio] = useState(1);
+        const height = width * ratio;
+        const [cropPoints, setCropPoints] = useState(initialCropPoints);
+
+        const { response } = useFetch(`/ipcamerapro/${camId}/crop`);
+        useEffect(() => {
+          if (response) {
+            setCropPoints(response);
+          }
+        }, [response]);
+
+        const onLoad = useCallback(
+          (e) => {
+            const img = e.target;
+            setRatio(img.naturalHeight / img.naturalWidth);
+          },
+          []
+        );
+
+        // debounce the points to a server
+        const debouncedUpdateValue = useThrottle((points) => {
+          fetch(`/ipcamerapro/${camId}/crop`, {
+            method: "POST",
+            body: JSON.stringify({ points }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        }, 50);
+
+        const setCorner = useCallback(
+          (i, x, y) => {
+            setCropPoints((points) => {
+              const newPoints = [...points];
+              newPoints[i] = [x, y];
+              debouncedUpdateValue(newPoints);
+              return newPoints;
+            });
+          },
+          [setCropPoints]
+        );
+
+        const [draggingIndex, setDraggingIndex] = useState(-1);
+
+        const onMouseDown = useCallback(
+          (e) => {
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / width;
+            const y = (e.clientY - rect.top) / height;
+            // console.log(x, y)
+            // find the closest corner
+            const closePoint = cropPoints.find(([cx, cy]) => {
+              const dx = cx - x;
+              const dy = cy - y;
+              return Math.sqrt(dx * dx + dy * dy) < 0.1;
+            });
+            const closestIndex = cropPoints.indexOf(closePoint);
+            setDraggingIndex(closestIndex);
+          },
+          [width, height, cropPoints]
+        );
+
+        const onMouseUp = useCallback(() => {
+          setDraggingIndex(-1);
+        }, []);
+        const onMouseLeave = useCallback(() => {
+          setDraggingIndex(-1);
+        }, []);
+
+        const onMouseMove = useCallback((e) => {
+          if (draggingIndex === -1) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / width;
+          const y = (e.clientY - rect.top) / height;
+          setCorner(draggingIndex, x, y);
+          console.log("=>", x, y)
+        }, [draggingIndex]);
+
+        const onReset = useCallback(() => {
+          setCropPoints(initialCropPoints);
+          debouncedUpdateValue(initialCropPoints);
+        }, []);
+
+        return (
+          <div>
+          <div style={{ width, height, position: "relative" }}>
+            <svg
+              width={width}
+              height={height}
+              style={{ position: "absolute", top: 0, left: 0 }}
+              onMouseDown={onMouseDown}
+              onMouseUp={onMouseUp}
+              onMouseMove={onMouseMove}
+              onMouseLeave={onMouseLeave}
+            >
+              <polygon
+                points={cropPoints
+                  .map(([x, y]) => `${x * width},${y * height}`)
+                  .join(" ")}
+                fill="rgba(255,0,0,0.2)"
+                stroke="red"
+                strokeWidth="2px"
+              />
+              {cropPoints.map(([x, y], i) => (
+                <circle
+                  key={i}
+                  cx={x * width}
+                  cy={y * height}
+                  r={10}
+                  fill="none"
+                  stroke="red"
+                  strokeWidth="2px"
+                />
+              ))}
+            </svg>
+            <MjpegImage
+              onLoad={onLoad}
+              width={width}
+              src="http://camdesk:8080/video"
+            />
+          </div>
+<button onClick={onReset}>RESET</button></div>
+
+        );
+      };
+
+      const { Shaders, GLSL, Node } = GLReact;
+      const { Surface } = GLReactDOM;
+
+      const shaders = Shaders.create({
+        crop: {
+          frag: GLSL`
+            precision highp float;
+            varying vec2 uv;
+            uniform sampler2D t;
+            void main() {
+              gl_FragColor = texture2D(t, uv);
+            }
+          `,
+        },
+      });
+
+      const Crop = ({ imgUrl, width, height }) => {
+        const canvasRef = useRef(null);
+        const dimensions = useRef({ width, height });
+        useEffect(() => {
+          dimensions.current = { width, height };
+        }, [width, height]);
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext("2d");
+          const img = new Image();
+          let unmounted = false;
+          img.onload = () => {
+            function loop() {
+              if (unmounted) return;
+              ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+              requestAnimationFrame(loop);
+            }
+            loop();
+          };
+          img.src = imgUrl;
+          return () => {
+            unmounted = true;
+          };
+        }, [dimensions]);
+        return (
+          <Surface width={width} height={height}>
+            <Node shader={shaders.crop} uniforms={{ t: imgUrl }} />
+          </Surface>
+        );
+      };
+
+      const CropCanvas2D = ({ imgUrl, width, height }) => {
+        const canvasRef = useRef(null);
+        const dimensions = useRef({ width, height });
+        useEffect(() => {
+          dimensions.current = { width, height };
+        }, [width, height]);
+        let unmounted = false;
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext("2d");
+          const img = new Image();
+          img.onload = () => {
+            function loop() {
+              if (unmounted) return;
+              ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+              requestAnimationFrame(loop);
+            }
+            loop();
+          };
+          img.src = imgUrl;
+          return () => {
+            unmounted = true;
+          };
+        }, [dimensions]);
+        return <canvas ref={canvasRef} width="400" height="400" />;
+      };
+
+      const bindings = [
+        { control: 21, id: "ptz" },
+        { control: 22, id: "crop_x" },
+        { control: 23, id: "crop_y" },
+      ];
+
+      const MainCamera = () => {
+        const [configuring, setConfiguring] = useState(false);
+        const [width,setWidth] = useState(window.innerWidth - 40)
+        useEffect(() => {
+          function onResize() {
+            setWidth(window.innerWidth - 40)
+          }
+          window.addEventListener("resize", onResize);
+          return () => {
+            window.removeEventListener("resize", onResize);
+          };
+        }, []);
+        const id = "topcamera";
+        return (
+          <div style={{ padding: 20 }}>
+            <h2>Camera
+              
+            <button onClick={() => setConfiguring((prev) => !prev)}>
+              {configuring ? "Done" : "Configure"}
+            </button>
+              </h2>
+            {/*
+              <Crop width={600} height={400} imgUrl="http://camdesk:8080/video" />
+            */}
+            {configuring ? (
+              <Cropper
+                camId={id}
+                width={width}
+                imgUrl="http://camdesk:8080/video"
+              />
+            ) : null}
+            <CameraControls id={id} bindings={bindings} />
+          </div>
+        );
+      };
 
       const Root = () => {
         const [state, setState] = useState(null);
@@ -294,8 +578,8 @@
 
         return (
           <MIDIAccess>
-            <Render state={state} />
-            {mainCamera}
+            <Inputs state={state} />
+            <MainCamera />
           </MIDIAccess>
         );
       };

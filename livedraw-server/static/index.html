@@ -184,18 +184,13 @@
       #predictive .camera:not(.disabled) {
         animation: predictive infinite 2s;
       }
-      #predictive.darkblue {
+      #predictive {
         opacity: 0.5;
-        filter: invert(41%) sepia(69%) saturate(737%) hue-rotate(156deg)
-          brightness(92%) contrast(93%);
-      }
-      #predictive.light {
-        opacity: 0.5;
-        filter: invert(76%) sepia(23%) saturate(658%) hue-rotate(185deg)
-          brightness(100%) contrast(102%);
+        filter: brightness(0%) grayscale(100%);
       }
       #predictive.debug-preview {
         opacity: 1;
+        filter: none;
         background: white;
       }
       @keyframes predictive {
@@ -1022,7 +1017,13 @@
         CounterBtn: React.memo(CounterBtn),
       };
 
-      const LayoutCellInner = ({ value, config, id, style }) => {
+      const LayoutCellInner = ({
+        value,
+        config,
+        id,
+        style,
+        layoutCellStyle,
+      }) => {
         const [noupdates, setNoupdates] = useState(true);
 
         useEffect(() => {
@@ -1037,6 +1038,7 @@
 
         return (
           <div
+            style={layoutCellStyle}
             className={
               "layout-input layout-input-component-" +
               config.type +
@@ -1051,6 +1053,22 @@
 
       const LayoutCell = React.memo(LayoutCellInner);
 
+      function extractLayoutChildren(layout) {
+        if (typeof layout === "object" && layout.children)
+          return layout.children;
+        return layout;
+      }
+      function extractLayoutStyle(layout) {
+        if (typeof layout === "object" && layout.style) return layout.style;
+        return {};
+      }
+      function isSubLayout(layout) {
+        return (
+          typeof layout === "object" &&
+          (Array.isArray(layout.children) || Array.isArray(layout))
+        );
+      }
+
       const Layout = ({ direction, config, state, layout }) => {
         return (
           <div
@@ -1059,10 +1077,11 @@
               flexDirection: direction,
               justifyContent:
                 (config.style && config.style.spacing) || "space-between",
+              ...extractLayoutStyle(layout),
             }}
           >
-            {layout.map((id) => {
-              if (typeof id === "object" && Array.isArray(id)) {
+            {extractLayoutChildren(layout).map((id) => {
+              if (isSubLayout(id)) {
                 return (
                   <Layout
                     direction={direction === "column" ? "row" : "column"}
@@ -1073,13 +1092,15 @@
                   />
                 );
               }
-              const input = config.inputs[id];
+              const child = extractLayoutChildren(id);
+              const input = config.inputs[child];
               return (
                 <LayoutCell
-                  key={id}
-                  value={state[id]}
+                  key={child}
+                  value={state[child]}
                   config={input}
-                  id={id}
+                  id={child}
+                  layoutCellStyle={extractLayoutStyle(id)}
                   style={config.style}
                 />
               );
@@ -1208,11 +1229,7 @@
               {config.debug ? (
                 <DebugPreview />
               ) : (
-                <img
-                  className={config.predictive}
-                  src={`/predictive.svg?t=${prediction}`}
-                  id="predictive"
-                />
+                <img src={`/predictive.svg?t=${prediction}`} id="predictive" />
               )}
               {state.artServer.started ? (
                 <CamTimer relativeSince={state.artServer.startedTime} />

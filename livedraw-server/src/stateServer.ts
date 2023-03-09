@@ -546,6 +546,30 @@ export default function (app: Express) {
     res.send(globalConfig);
   });
 
+  const cropPointsDefault = [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+  ];
+  const cropPoints: Record<string, typeof cropPointsDefault> = {};
+
+  app.get("/ipcamerapro/:cam/crop", (req, res) => {
+    const { cam } = req.params;
+    res.send(cropPoints[cam] || cropPointsDefault);
+  });
+
+  app.post("/ipcamerapro/:cam/crop", (req, res) => {
+    const { cam } = req.params;
+    let { points } = req.body;
+    if (!points || points.length !== 4) {
+      res.send(400);
+      return;
+    }
+    cropPoints[cam] = points;
+    res.send(200);
+  });
+
   app.post("/ipcamerapro/:cam", (req, res) => {
     // get id and path
     const { cam } = req.params;

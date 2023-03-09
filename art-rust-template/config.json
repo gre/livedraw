@@ -1,11 +1,15 @@
 {
   "title": "NAME by @AUTHOR",
   "layout": [
-    ["shape"],
-    ["value", "poll"]
+    [
+      "shape"
+    ],
+    [
+      "value",
+      "poll"
+    ]
   ],
   "style": {},
-  "predictive": "light",
   "inputs": {
     "shape": {
       "description": "shapes a curve with 26 letters",
