@@ -1,7 +1,7 @@
 import { InputConfig, Module } from "../types";
 
 type RangeConfig = InputConfig & {
-  decay: number;
+  decay?: number;
   initialValue: [number, number];
   range?: [number, number];
 };

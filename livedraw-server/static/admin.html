@@ -305,11 +305,11 @@
       };
 
       const initialCropPoints = [
-          [0, 0],
-          [1, 0],
-          [1, 1],
-          [0, 1],
-        ];
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1],
+      ];
 
       const Cropper = ({ camId, imgUrl, width }) => {
         const [ratio, setRatio] = useState(1);
@@ -323,13 +323,10 @@
           }
         }, [response]);
 
-        const onLoad = useCallback(
-          (e) => {
-            const img = e.target;
-            setRatio(img.naturalHeight / img.naturalWidth);
-          },
-          []
-        );
+        const onLoad = useCallback((e) => {
+          const img = e.target;
+          setRatio(img.naturalHeight / img.naturalWidth);
+        }, []);
 
         // debounce the points to a server
         const debouncedUpdateValue = useThrottle((points) => {
@@ -382,14 +379,17 @@
           setDraggingIndex(-1);
         }, []);
 
-        const onMouseMove = useCallback((e) => {
-          if (draggingIndex === -1) return;
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = (e.clientX - rect.left) / width;
-          const y = (e.clientY - rect.top) / height;
-          setCorner(draggingIndex, x, y);
-          console.log("=>", x, y)
-        }, [draggingIndex]);
+        const onMouseMove = useCallback(
+          (e) => {
+            if (draggingIndex === -1) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / width;
+            const y = (e.clientY - rect.top) / height;
+            setCorner(draggingIndex, x, y);
+            console.log("=>", x, y);
+          },
+          [draggingIndex]
+        );
 
         const onReset = useCallback(() => {
           setCropPoints(initialCropPoints);
@@ -398,44 +398,44 @@
 
         return (
           <div>
-          <div style={{ width, height, position: "relative" }}>
-            <svg
-              width={width}
-              height={height}
-              style={{ position: "absolute", top: 0, left: 0 }}
-              onMouseDown={onMouseDown}
-              onMouseUp={onMouseUp}
-              onMouseMove={onMouseMove}
-              onMouseLeave={onMouseLeave}
-            >
-              <polygon
-                points={cropPoints
-                  .map(([x, y]) => `${x * width},${y * height}`)
-                  .join(" ")}
-                fill="rgba(255,0,0,0.2)"
-                stroke="red"
-                strokeWidth="2px"
-              />
-              {cropPoints.map(([x, y], i) => (
-                <circle
-                  key={i}
-                  cx={x * width}
-                  cy={y * height}
-                  r={10}
-                  fill="none"
+            <div style={{ width, height, position: "relative" }}>
+              <svg
+                width={width}
+                height={height}
+                style={{ position: "absolute", top: 0, left: 0 }}
+                onMouseDown={onMouseDown}
+                onMouseUp={onMouseUp}
+                onMouseMove={onMouseMove}
+                onMouseLeave={onMouseLeave}
+              >
+                <polygon
+                  points={cropPoints
+                    .map(([x, y]) => `${x * width},${y * height}`)
+                    .join(" ")}
+                  fill="rgba(255,0,0,0.2)"
                   stroke="red"
                   strokeWidth="2px"
                 />
-              ))}
-            </svg>
-            <MjpegImage
-              onLoad={onLoad}
-              width={width}
-              src="http://camdesk:8080/video"
-            />
+                {cropPoints.map(([x, y], i) => (
+                  <circle
+                    key={i}
+                    cx={x * width}
+                    cy={y * height}
+                    r={10}
+                    fill="none"
+                    stroke="red"
+                    strokeWidth="2px"
+                  />
+                ))}
+              </svg>
+              <MjpegImage
+                onLoad={onLoad}
+                width={width}
+                src="http://camdesk:8080/video"
+              />
+            </div>
+            <button onClick={onReset}>RESET</button>
           </div>
-<button onClick={onReset}>RESET</button></div>
-
         );
       };
 
@@ -521,10 +521,10 @@
 
       const MainCamera = () => {
         const [configuring, setConfiguring] = useState(false);
-        const [width,setWidth] = useState(window.innerWidth - 40)
+        const [width, setWidth] = useState(window.innerWidth - 40);
         useEffect(() => {
           function onResize() {
-            setWidth(window.innerWidth - 40)
+            setWidth(window.innerWidth - 40);
           }
           window.addEventListener("resize", onResize);
           return () => {
@@ -534,12 +534,12 @@
         const id = "topcamera";
         return (
           <div style={{ padding: 20 }}>
-            <h2>Camera
-              
-            <button onClick={() => setConfiguring((prev) => !prev)}>
-              {configuring ? "Done" : "Configure"}
-            </button>
-              </h2>
+            <h2>
+              Camera
+              <button onClick={() => setConfiguring((prev) => !prev)}>
+                {configuring ? "Done" : "Configure"}
+              </button>
+            </h2>
             {/*
               <Crop width={600} height={400} imgUrl="http://camdesk:8080/video" />
             */}

@@ -3,6 +3,7 @@ import isEqual from "lodash/isEqual";
 
 type Config = InputConfig & {
   maxLetters: number;
+  requiredMatchRegexp?: string;
 };
 
 type State = {
@@ -23,6 +24,17 @@ const AlphabeticCurve: Module<Config, State, State> = {
       // ignore if it's a command
       return s;
     }
+    if (config.requiredMatchRegexp) {
+      try {
+        const re = new RegExp(config.requiredMatchRegexp);
+        if (!re.test(msg)) {
+          return s;
+        }
+      } catch (e) {
+        console.error("invalid regexp", config.requiredMatchRegexp);
+      }
+    }
+
     return { value: msg.slice(0, config.maxLetters) };
   },
 

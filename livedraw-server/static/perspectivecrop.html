@@ -5,9 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>livedraw</title>
-    <style>
-      
-    </style>
+    <style></style>
   </head>
   <body>
     <div id="main"></div>
@@ -17,7 +15,6 @@
     <!--<img src="http://camdesk:8080/video" width="400"/> -->
 
     <script>
-
       const regl = createREGL();
 
       let points = [
@@ -27,7 +24,7 @@
         [0.0, 1.0],
       ];
 
-      let projection = [0,0,0,0,0,0,0,0,0];
+      let projection = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
       const update = () => {
         fetch("/ipcamerapro/topcamera/crop")
@@ -35,8 +32,7 @@
           .then((data) => {
             points = data;
             const srcPoints = points.flat();
-            const dstPoints = 
-            [
+            const dstPoints = [
               [0.0, 0.0],
               [1.0, 0.0],
               [1.0, 1.0],
@@ -45,8 +41,8 @@
             var perspT = PerspT(dstPoints, srcPoints);
             projection = perspT.coeffs;
           });
-      }
-      update()
+      };
+      update();
       setInterval(update, 5000);
 
       const img = new Image();
@@ -98,10 +94,10 @@
 
         regl.frame(() => {
           inputTexture({ data: img });
-          draw({ projection, });
+          draw({ projection });
         });
-      }
-      img.src = "http://camdesk:8080/video"
+      };
+      img.src = "http://camdesk:8080/video";
     </script>
   </body>
 </html>

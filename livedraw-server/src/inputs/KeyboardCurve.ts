@@ -18,6 +18,7 @@ type AlphabeticCurveConfig = InputConfig & {
   threshold?: number;
   msgAmp?: number;
   msgOffset?: number;
+  reverse?: boolean;
 };
 
 type History = Array<{
@@ -35,7 +36,9 @@ function safeResolution(config: AlphabeticCurveConfig) {
 
 function initialState(config: AlphabeticCurveConfig) {
   return {
-    cache: Array(config.letters.length * safeResolution(config)).fill(0),
+    cache: Array(config.letters.length * safeResolution(config)).fill(
+      config?.reverse ? 1 : 0
+    ),
     history: [],
   };
 }
@@ -78,9 +81,7 @@ function calculateCache(
   config: AlphabeticCurveConfig,
   currentSpeed: number
 ): State {
-  if (initial.history.length === 0) return initial;
-
-  const { envelope, threshold, msgOffset, msgAmp } = config;
+  const { envelope, threshold, msgOffset, msgAmp, reverse } = config;
   const spread = config.spread || 0.5;
   const r = safeResolution(config);
 
@@ -124,13 +125,17 @@ function calculateCache(
     if (v > max) max = v;
   });
   if (max <= min) {
-    cache = cache.map(() => 0);
+    cache = cache.map(() => (reverse ? 1 : 0));
   } else {
     // by default the max is at least min+1
     max = Math.max(min + (threshold || 0), max);
-    cache = cache.map((x) =>
-      Math.max(0, Math.min((saturateUp * (x - min)) / (max - min), 1))
-    );
+    cache = cache.map((x) => {
+      const v = Math.max(
+        0,
+        Math.min((saturateUp * (x - min)) / (max - min), 1)
+      );
+      return reverse ? 1 - v : v;
+    });
   }
 
   if (isEqual(cache, initial.cache)) return initial;

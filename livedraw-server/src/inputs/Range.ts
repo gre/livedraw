@@ -53,7 +53,8 @@ const Range: Module<
     return { target, value };
   },
 
-  updateWithChatMessage: (s, msg, context, { config, id }) => {
+  updateWithChatMessage: (s, msginput, context, { config, id }) => {
+    const msg = msginput.toLowerCase()
     if (context.isAdmin && msg === "!jump-to-target") {
       return { target: s.target, value: s.target };
     }

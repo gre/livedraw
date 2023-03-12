@@ -26,7 +26,7 @@ const Poll: Module<
 
   updateWithChatMessage: (s, msg, context, { id }) => {
     const head = "!" + id;
-    if (context.username && msg.startsWith(head)) {
+    if (context.username && msg.toLowerCase().startsWith(head)) {
       const remain = msg.slice(head.length).trim();
       if (s[context.username] === remain) return s; // no changes
       return { ...s, [context.username]: remain };
