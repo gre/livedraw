@@ -585,15 +585,16 @@ export default function (app: Express) {
     const { id, value } = req.body;
     let url = `http://${conf.ip}:8080/`;
     switch (id) {
+
       case "ptz":
         url += id + "?zoom=" + value;
         break;
       case "crop_x":
       case "crop_y":
+      case "focus_distance":
         url += "settings/" + id + "?set=" + value;
         break;
     }
-    console.log(url);
     axios.get(url).then(
       () => {
         res.send(200);

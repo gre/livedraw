@@ -41,6 +41,10 @@
     <script src="https://unpkg.com/gl-react-dom@5/gl-react-dom.js"></script>
 
     <script type="text/babel">
+
+      // TODO chat integration here
+      // TODO JS to be compiled...
+
       const { useState, useCallback, useContext, useEffect, useMemo, useRef } =
         React;
 
@@ -276,7 +280,7 @@
           (value, eventId) => {
             const binding = bindings.find((b) => b.control === eventId);
             if (!binding) return;
-            const v = Math.round(value * 100);
+            const v = binding.map? binding.map(value) : Math.round(value * 100);
             debouncedUpdateValue(id, binding.id, v);
           },
           [bindings, id]
@@ -386,7 +390,6 @@
             const x = (e.clientX - rect.left) / width;
             const y = (e.clientY - rect.top) / height;
             setCorner(draggingIndex, x, y);
-            console.log("=>", x, y);
           },
           [draggingIndex]
         );
@@ -514,9 +517,10 @@
       };
 
       const bindings = [
-        { control: 21, id: "ptz" },
-        { control: 22, id: "crop_x" },
-        { control: 23, id: "crop_y" },
+        { control: 20, id: "ptz" },
+        { control: 21, id: "crop_x" },
+        { control: 22, id: "crop_y" },
+        { control: 23, id: "focus_distance", map: (v) => Math.round(2*v*100)/100 },
       ];
 
       const MainCamera = () => {
@@ -562,7 +566,6 @@
           function reconnectLoop() {
             const source = new EventSource("/stream/state");
             source.onmessage = (e) => {
-              console.log(e.data);
               setState((prev) => ({ ...prev, ...JSON.parse(e.data) }));
             };
             source.onerror = (e) => {
