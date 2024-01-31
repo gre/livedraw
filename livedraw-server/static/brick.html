@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>livedraw</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+    </style>
+  </head>
+  <body>
+    <canvas width="512" height="512">
+    <script>
+      // TODO canvas align on middle
+
+      const canvas = document.querySelector("canvas");
+      const ctx = canvas.getContext("2d");
+
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, 512, 512);
+
+      const colors = ["#366363", "#a5c19b"]//, "#e3a0c0", "#a33a4d"];
+
+      let w = 16;
+      let h = 16;
+      let map = new Array(w * h).fill(0);
+      let balls = [];
+
+      function lookupmapindex(x, y) {
+        let xi = Math.max(0, Math.min(Math.floor(w * x / 512), w - 1));
+        let yi = Math.max(0, Math.min(Math.floor(h * y / 512), h - 1));
+        let i = xi + yi * w;
+        return i;
+      }
+
+      function othercolor(color) {
+        let r = Math.floor(Math.random() * (colors.length - 1));
+        if (r >= color) {
+          r ++;
+        }
+        return r;
+      }
+
+      function Ball(x, y, color, vx, vy) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.vx = vx;
+        this.vy = vy;
+        this.r = 10;
+      }
+
+      Ball.prototype.draw = function () {
+        let r = this.r;
+        ctx.fillStyle=colors[this.color];
+        ctx.fillRect(this.x-r, this.y-r, 2*r, 2*r);
+      };
+
+      Ball.prototype.update = function () {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        let x1 = this.x - this.r;
+        let x2 = this.x + this.r;
+        let y1 = this.y - this.r;
+        let y2 = this.y + this.r;
+
+        let left = lookupmapindex(x1, this.y);
+        let right = lookupmapindex(x2, this.y);
+        let top = lookupmapindex(this.x, y1);
+        let bottom = lookupmapindex(this.x, y2);
+
+        if (x1 < 0 || x2 > 512 || map[left] == this.color || map[right] == this.color) {
+          this.vx *= -1;
+        }
+        if (y1 < 0 || y2 > 512 || map[top] == this.color || map[bottom] == this.color) {
+          this.vy *= -1;
+        }
+
+        if (map[left] == this.color) {
+          map[left] = othercolor(this.color);
+        }
+        if (map[right] == this.color) {
+          map[right] = othercolor(this.color);
+        }
+        if (map[top] == this.color) {
+          map[top] = othercolor(this.color);
+        }
+        if (map[bottom] == this.color) {
+          map[bottom] = othercolor(this.color);
+        }
+      };
+
+      let diagVelocity = 5;
+
+      function init() {
+        let d = 100;
+        balls.push(new Ball(d, 256, 1, diagVelocity, diagVelocity));
+        balls.push(new Ball(512-d, 256, 0, -diagVelocity, -diagVelocity));
+
+        for (let i = 0; i < w; i++) {
+          for (let j = 0; j < h; j++) {
+            let x = i + j * w;
+            map[x] = i + (Math.random() < 0.8 ? 0 : Math.random() < 0.5 ? -1 : 1) < w / 2 ? 0 : 1;
+          }
+        }
+      }
+
+      function render() {
+        // draw map
+        let sw = 512 / w;
+        let sh = 512 / h;
+        for (let xi = 0; xi < w; xi++) {
+          for (let yi = 0; yi < h; yi++) {
+            let i = xi + yi * w;
+            let x = xi * sw;
+            let y = yi * sh;
+            ctx.fillStyle = colors[map[i]];
+            ctx.fillRect(x, y, sw, sh);
+          }
+        }
+        // render balls
+        balls.forEach((ball) => {
+          ball.draw();
+        });
+      }
+
+      function update() {
+        balls.forEach((ball) => {
+          ball.update();
+        });
+      }
+
+      init();
+      requestAnimationFrame(function loop() {
+        update();
+        render();
+        requestAnimationFrame(loop);
+      });
+
+
+      function connect() {
+        const eventSource = new EventSource("/chatbox/messages?noreplay=true");
+        eventSource.onmessage = (e) => {
+          const message = JSON.parse(e.data);
+          if (message.text.includes("!spawn")) {
+            let x = Math.random() * 512;
+            let y = Math.random() * 512;
+            let vx = Math.random() < 0.5 ? -diagVelocity : diagVelocity;
+            let vy = Math.random() < 0.5 ? -diagVelocity : diagVelocity;
+            let color = Math.floor(Math.random() * colors.length);
+            balls.push(new Ball(x, y, color, vx, vy));
+          }
+        };
+        eventSource.onerror = (e) => {
+          eventSource.close();
+        };
+        return () => eventSource.close();
+      }
+      connect();
+
+    /*
+
+      function ChatBox() {
+        const [messages, setMessages] = useState([]);
+        const messagesEndRef = useRef(null);
+
+        useEffect(() => {
+          function connect() {
+            const eventSource = new EventSource("/chatbox/messages");
+            eventSource.onmessage = (e) => {
+              const message = JSON.parse(e.data);
+              setMessages((prevMessages) =>
+                prevMessages.length >= 50
+                  ? prevMessages.slice(1).concat(message)
+                  : prevMessages.concat(message)
+              );
+            };
+            eventSource.onerror = (e) => {
+              eventSource.close();
+            };
+            return () => eventSource.close();
+          }
+          return connect();
+        }, []);
+        */
+
+
+    </script>
+  </body>
+</html>

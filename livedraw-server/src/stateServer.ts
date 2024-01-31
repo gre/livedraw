@@ -634,9 +634,12 @@ export default function (app: Express) {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("connection", "keep-alive");
-    last50.forEach((message) =>
-      res.write(`data: ${JSON.stringify(message)}\n\n`)
-    );
+    // noreplay in query params
+    if (!req.query.noreplay) {
+      last50.forEach((message) =>
+        res.write(`data: ${JSON.stringify(message)}\n\n`)
+      );
+    }
     function listen(message: Message) {
       res.write(`data: ${JSON.stringify(message)}\n\n`);
     }
