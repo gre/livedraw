@@ -4,38 +4,27 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>livedraw</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
-      rel="stylesheet"
-    />
+    <title></title>
     <style>
     </style>
   </head>
   <body>
     <canvas width="512" height="512">
     <script>
-      // TODO canvas align on middle
-
       const canvas = document.querySelector("canvas");
       const ctx = canvas.getContext("2d");
+      const colors = ["#366363", "#a5c19b"]
 
-      ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, 512, 512);
-
-      const colors = ["#366363", "#a5c19b"]//, "#e3a0c0", "#a33a4d"];
-
-      let w = 16;
-      let h = 16;
-      let map = new Array(w * h).fill(0);
-      let balls = [];
+      const diagVelocity = 5;
+      const w = 16;
+      const h = 16;
+      const map = new Array(w * h).fill(0);
+      const balls = [];
 
       function lookupmapindex(x, y) {
-        let xi = Math.max(0, Math.min(Math.floor(w * x / 512), w - 1));
-        let yi = Math.max(0, Math.min(Math.floor(h * y / 512), h - 1));
-        let i = xi + yi * w;
+        const xi = Math.max(0, Math.min(Math.floor(w * x / 512), w - 1));
+        const yi = Math.max(0, Math.min(Math.floor(h * y / 512), h - 1));
+        const i = xi + yi * w;
         return i;
       }
 
@@ -57,7 +46,7 @@
       }
 
       Ball.prototype.draw = function () {
-        let r = this.r;
+        const r = this.r;
         ctx.fillStyle=colors[this.color];
         ctx.fillRect(this.x-r, this.y-r, 2*r, 2*r);
       };
@@ -66,15 +55,15 @@
         this.x += this.vx;
         this.y += this.vy;
 
-        let x1 = this.x - this.r;
-        let x2 = this.x + this.r;
-        let y1 = this.y - this.r;
-        let y2 = this.y + this.r;
+        const x1 = this.x - this.r;
+        const x2 = this.x + this.r;
+        const y1 = this.y - this.r;
+        const y2 = this.y + this.r;
 
-        let left = lookupmapindex(x1, this.y);
-        let right = lookupmapindex(x2, this.y);
-        let top = lookupmapindex(this.x, y1);
-        let bottom = lookupmapindex(this.x, y2);
+        const left = lookupmapindex(x1, this.y);
+        const right = lookupmapindex(x2, this.y);
+        const top = lookupmapindex(this.x, y1);
+        const bottom = lookupmapindex(this.x, y2);
 
         if (x1 < 0 || x2 > 512 || map[left] == this.color || map[right] == this.color) {
           this.vx *= -1;
@@ -97,13 +86,11 @@
         }
       };
 
-      let diagVelocity = 5;
 
       function init() {
-        let d = 100;
+        const d = 100;
         balls.push(new Ball(d, 256, 1, diagVelocity, diagVelocity));
         balls.push(new Ball(512-d, 256, 0, -diagVelocity, -diagVelocity));
-
         for (let i = 0; i < w; i++) {
           for (let j = 0; j < h; j++) {
             let x = i + j * w;
@@ -126,15 +113,11 @@
           }
         }
         // render balls
-        balls.forEach((ball) => {
-          ball.draw();
-        });
+        balls.forEach((ball) => ball.draw());
       }
 
       function update() {
-        balls.forEach((ball) => {
-          ball.update();
-        });
+        balls.forEach((ball) => ball.update());
       }
 
       init();
@@ -143,7 +126,6 @@
         render();
         requestAnimationFrame(loop);
       });
-
 
       function connect() {
         const eventSource = new EventSource("/chatbox/messages?noreplay=true");
@@ -164,34 +146,6 @@
         return () => eventSource.close();
       }
       connect();
-
-    /*
-
-      function ChatBox() {
-        const [messages, setMessages] = useState([]);
-        const messagesEndRef = useRef(null);
-
-        useEffect(() => {
-          function connect() {
-            const eventSource = new EventSource("/chatbox/messages");
-            eventSource.onmessage = (e) => {
-              const message = JSON.parse(e.data);
-              setMessages((prevMessages) =>
-                prevMessages.length >= 50
-                  ? prevMessages.slice(1).concat(message)
-                  : prevMessages.concat(message)
-              );
-            };
-            eventSource.onerror = (e) => {
-              eventSource.close();
-            };
-            return () => eventSource.close();
-          }
-          return connect();
-        }, []);
-        */
-
-
     </script>
   </body>
 </html>
